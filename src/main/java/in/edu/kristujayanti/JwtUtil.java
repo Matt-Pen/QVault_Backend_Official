@@ -10,14 +10,28 @@ public class JwtUtil {
     secretclass srt=new secretclass();
 
     private final String SECRET_KEY = srt.JWTSECRET;
-    public String generateToken(String email,long exp) {
+    public String generateAccessToken(String email,long expmin, String role) {
         long nowMillis = System.currentTimeMillis();
-        long expMillis = nowMillis + exp; // 1 hour
+        long expMillis = nowMillis + (expmin * 60 * 1000);
 
         return Jwts.builder()
                 .setSubject(email)
                 .setIssuedAt(new Date(nowMillis))
                 .setExpiration(new Date(expMillis))
+                .claim("role",role)
+                .signWith(SignatureAlgorithm.HS512, SECRET_KEY)
+                .compact();
+    }
+
+    public String generateRefreshToken(String email,long days, String role) {
+        long nowMillis = System.currentTimeMillis();
+        long expMillis = nowMillis + (days * 24L * 60L * 60L * 1000L);  // 1 hour
+
+        return Jwts.builder()
+                .setSubject(email)
+                .setIssuedAt(new Date(nowMillis))
+                .setExpiration(new Date(expMillis))
+                .claim("role",role)
                 .signWith(SignatureAlgorithm.HS512, SECRET_KEY)
                 .compact();
     }
@@ -30,6 +44,19 @@ public class JwtUtil {
                     .getBody();
             return claims.getSubject(); // email
         } catch (Exception e) {
+            return null;
+        }
+    }
+
+    public String extractRole(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(SECRET_KEY)
+                    .parseClaimsJws(token)
+                    .getBody();
+
+            return claims.get("role",String.class);
+        }catch (Exception e) {
             return null;
         }
     }
