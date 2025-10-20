@@ -9,6 +9,7 @@ import com.mongodb.client.model.Updates;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.InsertOneResult;
 import com.mongodb.client.result.UpdateResult;
+import in.edu.kristujayanti.AWSEmail;
 import in.edu.kristujayanti.JwtUtil;
 import in.edu.kristujayanti.secretclass;
 import io.vertx.core.Vertx;
@@ -29,6 +30,9 @@ import java.util.Properties;
 import java.util.Random;
 
 import io.vertx.core.AbstractVerticle;
+import software.amazon.awssdk.services.ses.model.SendEmailRequest;
+
+
 
 public class SampleService extends AbstractVerticle {
 
@@ -38,6 +42,7 @@ public class SampleService extends AbstractVerticle {
     Jedis jedis = new Jedis("localhost", 6379);
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     secretclass srt = new secretclass();
+    AWSEmail ses= new AWSEmail();
     Vertx vertx = Vertx.vertx();
     HttpServer server = vertx.createHttpServer();
     String connectionString = srt.constr;
@@ -106,7 +111,8 @@ public class SampleService extends AbstractVerticle {
                 String send_otp = generateID(6);
                 System.out.println(send_otp);
                 setotp(send_otp,email);
-                sendOTPmail(send_otp, email);
+                ses.sendawssignup(send_otp,email);
+//                sendOTPmail(send_otp, email);
                 status = "OTP Sent";
             } else if (email != null && otp != null && newpass != null) {
                 String sent_otp = getoken(otp);
@@ -202,7 +208,8 @@ public class SampleService extends AbstractVerticle {
             String send_otp = generateID(6);
             System.out.println(send_otp);
             setotp(send_otp,email);
-            sendresetmail(send_otp, email);
+            ses.sendawsforgotpass(send_otp,email);
+//            sendresetmail(send_otp, email);
             status = "OTP Sent";
 
         }else if(email!=null && otp!=null & pass!=null)
@@ -438,6 +445,7 @@ public class SampleService extends AbstractVerticle {
         }
 
     }
+
 
 
 
