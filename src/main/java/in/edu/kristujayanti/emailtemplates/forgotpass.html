@@ -1,54 +1,107 @@
 <!DOCTYPE html>
-<html>
-<body style="font-family: Arial, sans-serif; padding: 20px; background-color: #ffffff;">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <style>
+        body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+        table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; }
+            .logo { width: 200px !important; height: auto !important; }
+            .code-box { font-size: 28px !important; padding: 12px 20px !important; }
+        }
+    </style>
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background-color: #f5f5f5;">
+<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f5f5f5; padding: 40px 20px;">
+    <tr>
+        <td align="center">
+            <!-- Main Container -->
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="container" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
 
-<!-- Logo -->
-<div style="text-align: center; margin-bottom: 20px;">
-    <img src="https://i.ibb.co/rKCxQmj5/qvaultlogo-blck.png" alt="Qvault Logo" width="400" height="225" />
-</div>
+                <!-- Header with gradient background -->
+                <tr>
+                    <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 40px 30px 40px; text-align: center;">
+                        <img src="https://i.postimg.cc/XvVgQk6H/qvaultlogo-blck.png" alt="Qvault" width="280" height="auto" class="logo" style="display: block; margin: 0 auto; max-width: 100%;" />
+                    </td>
+                </tr>
 
-<!-- Heading -->
-<h2 style="color: #333; text-align: center; text-decoration: underline; text-underline-offset: 4px; font-size: 27px;">
-    Password Reset Code
-</h2>
+                <!-- Content -->
+                <tr>
+                    <td style="padding: 50px 40px 40px 40px;">
+                        <!-- Title -->
+                        <h1 style="margin: 0 0 20px 0; font-size: 28px; font-weight: 600; color: #1a1a1a; text-align: center;">
+                            Password Reset Request
+                        </h1>
 
-<!-- Message -->
-<p style="font-size: 15px;">Hi there,</p>
-<p style="font-size: 15px;">Please use the Reset Code below to reset your password:</p>
+                        <!-- Greeting -->
+                        <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #4a4a4a;">
+                            Hi there,
+                        </p>
 
-<!-- Token Box -->
-<div
-        style="
-        text-align: center;
-        font-size: 35px;
-        font-weight: bold;
-        background: #f4f4f4;
-        border-radius: 8px;
-        padding: 14px;
-        width: fit-content;
-        margin: 20px auto;
-        color: #0066cc;
-        font-family: 'Courier New', Courier, monospace;
-        letter-spacing: 2px;
-      "
->
-    {{otp}}
-</div>
+                        <!-- Message -->
+                        <p style="margin: 0 0 30px 0; font-size: 16px; line-height: 1.6; color: #4a4a4a;">
+                            We received a request to reset your password. Use the verification code below to complete the process:
+                        </p>
 
-<!-- Expiry -->
-<p style="color: red; font-weight: bold;">Token is only valid for 5 Minutes.</p>
+                        <!-- Code Box -->
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                            <tr>
+                                <td align="center" style="padding: 0 0 30px 0;">
+                                    <div class="code-box" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; padding: 18px 40px; box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);">
+                                            <span style="font-size: 36px; font-weight: bold; color: #ffffff; font-family: 'Courier New', Courier, monospace; letter-spacing: 8px; display: block;">
+                                                {{otp}}
+                                            </span>
+                                    </div>
+                                </td>
+                            </tr>
+                        </table>
 
-<!-- Ignore note -->
-<p style="font-size: 14px; color: #555;">
-    If you did not request this Reset Code, someone is trying to access your account.
-</p>
+                        <!-- Timer warning -->
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 6px; margin-bottom: 30px;">
+                            <tr>
+                                <td style="padding: 15px 20px;">
+                                    <p style="margin: 0; font-size: 14px; color: #856404; font-weight: 500;">
+                                        ⏱ This code will expire in <strong>5 minutes</strong>
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
 
-<!-- Footer -->
-<hr style="margin-top: 40px; border: none; border-top: 1px solid #ccc;" />
-<p style="font-size: 13px; color: #888;">
-    Regards,<br />
-    <strong>The Qvault Team</strong><br />
-    © 2025 Qvault Inc. All rights reserved.
-</p>
+                        <!-- Security notice -->
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f8d7da; border-left: 4px solid #dc3545; border-radius: 6px; margin-bottom: 30px;">
+                            <tr>
+                                <td style="padding: 15px 20px;">
+                                    <p style="margin: 0; font-size: 14px; color: #721c24; line-height: 1.5;">
+                                        <strong>🔒 Security Alert:</strong> If you didn't request this code, please ignore this email or contact our support team immediately.
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <p style="margin: 0; font-size: 12px; color: #999999;">
+                            © 2025 Qvault Inc. All rights reserved.
+                        </p>
+
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td style="background-color: #f8f9fa; padding: 30px 40px; text-align: center; border-top: 1px solid #e9ecef;">
+                        <p style="margin: 0 0 8px 0; font-size: 14px; color: #6b6b6b; line-height: 1.5;">
+                            Best regards,<br/>
+                            <strong style="color: #1a1a1a;">The Qvault Team</strong>
+                        </p>
+                    </td>
+                </tr>
+
+            </table>
+        </td>
+    </tr>
+</table>
 </body>
 </html>
