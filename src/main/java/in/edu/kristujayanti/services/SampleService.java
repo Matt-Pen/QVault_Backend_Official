@@ -3,6 +3,8 @@ import com.mongodb.client.MongoClient;
 import com.mongodb.client.MongoClients;
 import com.mongodb.client.MongoCollection;
 import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.gridfs.GridFSBucket;
+import com.mongodb.client.gridfs.GridFSBuckets;
 import com.mongodb.client.model.Filters;
 import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Updates;
@@ -16,16 +18,25 @@ import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
+import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.mail.*;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 import org.bson.Document;
 import org.bson.conversions.Bson;
+import org.bson.types.ObjectId;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import redis.clients.jedis.Jedis;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 import java.util.Random;
 
@@ -50,57 +61,15 @@ public class SampleService extends AbstractVerticle {
     MongoDatabase database = mongoClient.getDatabase("QVault");
     MongoCollection<Document> usersdb = database.getCollection("Users");
     MongoCollection<Document> wishdb = database.getCollection("wishlist");
+    MongoCollection<Document> pdfdb = database.getCollection("QuestionPapers");
 
-//    public void usersignup(RoutingContext ctx){
-//        JsonObject body=ctx.body().asJsonObject();
-//        String email=body.getString("email");
-//        String pass=body.getString("password");
-//        System.out.println(email);
-//        System.out.println(pass);
-//        String status="";
-//        ctx.response().setChunked(true);
-//        Document docs = usersdb.find().filter(Filters.eq("email", email)).first();
-//
-//        if (docs!=null){
-//            status="exist";
-//        }
-//        else{
-//            if(email.matches(".*\\d.*") && email.contains("@kristujayanti.com")){
-//                String role="student";
-//                String hashpass= hashPassword(pass);
-//                System.out.println(hashpass);
-//                Document insdoc=new Document("email",email).append("pass",hashpass).append("role",role);
-//                InsertOneResult insres=usersdb.insertOne(insdoc);
-//                if(insres.wasAcknowledged()) {
-//                    status = "success";
-//
-//                }
-//            } else if (email.contains("@kristujayanti.com")){
-//                String role="Admin";
-//                String hashpass= hashPassword(pass);
-//                System.out.println(hashpass);
-//                Document insdoc=new Document("email",email).append("pass",hashpass).append("role",role);
-//                InsertOneResult insres=usersdb.insertOne(insdoc);
-//                if(insres.wasAcknowledged()) {
-//                    status = "success";
-//
-//                }
-//            }
-//            else{
-//                status="failed";
-//            }
-//        }
-//        JsonObject job=new JsonObject().put("message",status);
-//        ctx.response().end(job.encode());
-//
-//
-//    }
+
 
     public void usersignup(RoutingContext ctx){
         JsonObject body=ctx.body().asJsonObject();
         String email=body.getString("email");
         String otp= body.getString("otp");
-        String newpass= body.getString("new pass");
+        String newpass= body.getString("password");
         String status="";
 
         Document docs = usersdb.find().filter(Filters.eq("email", email)).first();
@@ -118,10 +87,11 @@ public class SampleService extends AbstractVerticle {
                 String sent_otp = getoken(otp);
                 if (sent_otp.equals(email)) {
                     if (email.matches(".*\\d.*") && email.contains("@kristujayanti.com")) {
-                        String role = "student";
+                        String role = "Guest";
+                        String designation="Student";
                         String hashpass = hashPassword(newpass);
                         System.out.println(hashpass);
-                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role);
+                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation",designation);
                         InsertOneResult insres = usersdb.insertOne(insdoc);
                         if (insres.wasAcknowledged()) {
                             status = "success";
@@ -130,10 +100,11 @@ public class SampleService extends AbstractVerticle {
                             deltoken(otp);
                         }
                     } else if (email.contains("@kristujayanti.com")) {
-                        String role = "Admin";
+                        String role = "Guest";
+                        String designation="Faculty";
                         String hashpass = hashPassword(newpass);
                         System.out.println(hashpass);
-                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role);
+                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation",designation);
                         InsertOneResult insres = usersdb.insertOne(insdoc);
                         if (insres.wasAcknowledged()) {
                             status = "success";
@@ -250,6 +221,69 @@ public class SampleService extends AbstractVerticle {
 
         return sb.toString();
     }
+
+    public void handleupload(RoutingContext ctx) {
+        Vertx vertx = Vertx.vertx();
+        System.out.println("upload called");
+
+        String name = ctx.request().getFormAttribute("course");
+        String courseid = ctx.request().getFormAttribute("id");
+        String department = ctx.request().getFormAttribute("department");
+        String courseName = ctx.request().getFormAttribute("program");
+        String examTerm = ctx.request().getFormAttribute("term");
+        String year = ctx.request().getFormAttribute("year");
+        JsonObject job=new JsonObject();
+
+        try (MongoClient mongoClient = MongoClients.create(srt.constr)) {
+            MongoDatabase database = mongoClient.getDatabase("questpaper");
+
+            // Use GridFS to store PDFs
+            GridFSBucket gridFSBucket = GridFSBuckets.create(database);
+            List<ObjectId> pdfIds = new ArrayList<>();
+
+            for (FileUpload upload : ctx.fileUploads()) {
+                try {
+                    if (upload.contentType().equals("application/pdf")) {
+                        Path filePath = Paths.get(upload.uploadedFileName());
+                        try (InputStream pdfStream = Files.newInputStream(filePath)) {
+                            ObjectId fileId = gridFSBucket.uploadFromStream(upload.fileName(), pdfStream);
+                            pdfIds.add(fileId);
+                        }
+                    } else {
+                        System.out.println("Skipping non-PDF file: " + upload.fileName());
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
+            // Store metadata and reference to GridFS files
+            MongoCollection<Document> collection = database.getCollection("qpimage");
+
+            Document doc = new Document("course", name)
+                    .append("courseid", courseid)
+                    .append("department", department)
+                    .append("program", courseName)
+                    .append("term", examTerm)
+                    .append("year", year)
+                    .append("fileIds", pdfIds);  // Save GridFS file references
+
+            InsertOneResult ins= collection.insertOne(doc);
+            if(ins.wasAcknowledged()){
+                job.put("message","success");
+            }else{
+                job.put("message","fail");
+            }
+            ctx.response().end(job.encode());
+            System.out.println("uploaded maybe");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            ctx.response().setStatusCode(500).end("Failed to save PDFs with GridFS");
+        }
+    }
+
+
 
     public void sendOTPmail(String token,String email){
         String to = email;
