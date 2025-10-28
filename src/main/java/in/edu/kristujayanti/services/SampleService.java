@@ -223,63 +223,102 @@ public class SampleService extends AbstractVerticle {
     }
 
     public void handleupload(RoutingContext ctx) {
-        Vertx vertx = Vertx.vertx();
+        ctx.response().setChunked(true);
+        String auth=ctx.request().getHeader("Authorization");
+
         System.out.println("upload called");
 
-        String name = ctx.request().getFormAttribute("course");
-        String courseid = ctx.request().getFormAttribute("id");
-        String department = ctx.request().getFormAttribute("department");
-        String courseName = ctx.request().getFormAttribute("program");
-        String examTerm = ctx.request().getFormAttribute("term");
-        String year = ctx.request().getFormAttribute("year");
-        JsonObject job=new JsonObject();
+        if(auth==null || !auth.startsWith("Bearer ")){
+            JsonObject job=new JsonObject().put("message","Invalid message");
+            ctx.response().end(job.encode());
+            System.out.println("auth null IF");
+            return;
+        }
 
-        try (MongoClient mongoClient = MongoClients.create(srt.constr)) {
-            MongoDatabase database = mongoClient.getDatabase("questpaper");
+        String token = auth.replace("Bearer ", "");
+        if(jtil.isTokenValid(token))
+        {
+            System.out.println("token valid succes");
+            String email= jtil.extractEmail(token);
+            String role=jtil.extractRole(token);
+            Bson filt1=Filters.eq("email",email);
+            Document matchdoc= usersdb.find(filt1).first();
 
-            // Use GridFS to store PDFs
-            GridFSBucket gridFSBucket = GridFSBuckets.create(database);
-            List<ObjectId> pdfIds = new ArrayList<>();
+            if(matchdoc.getString("email")!=null && matchdoc.getString("email").equals(email) && matchdoc.getString("role").equals(role) && role.equals("Admin"))
+            {
+                System.out.println("role and user valid valid succes");
 
-            for (FileUpload upload : ctx.fileUploads()) {
+
+                String name = ctx.request().getFormAttribute("course");
+                String courseid = ctx.request().getFormAttribute("id");
+                String department = ctx.request().getFormAttribute("department");
+                String courseName = ctx.request().getFormAttribute("program");
+                String examTerm = ctx.request().getFormAttribute("term");
+                String year = ctx.request().getFormAttribute("year");
+                JsonObject job = new JsonObject();
+
                 try {
-                    if (upload.contentType().equals("application/pdf")) {
-                        Path filePath = Paths.get(upload.uploadedFileName());
-                        try (InputStream pdfStream = Files.newInputStream(filePath)) {
-                            ObjectId fileId = gridFSBucket.uploadFromStream(upload.fileName(), pdfStream);
-                            pdfIds.add(fileId);
+
+                    GridFSBucket gridFSBucket = GridFSBuckets.create(database);
+
+                    Document doc = new Document();
+
+
+                    for (FileUpload upload : ctx.fileUploads()) {
+                        try {
+                            if (upload.contentType().equals("application/pdf")) {
+                                Path filePath = Paths.get(upload.uploadedFileName());
+                                try (InputStream pdfStream = Files.newInputStream(filePath)) {
+                                    ObjectId fileId = gridFSBucket.uploadFromStream(upload.fileName(), pdfStream);
+                                    doc.append("course", name)
+                                            .append("courseid", courseid)
+                                            .append("department", department)
+                                            .append("program", courseName)
+                                            .append("term", examTerm)
+                                            .append("year", year)
+                                            .append("fileId", fileId);
+                                }
+                            } else {
+                                System.out.println("Skipping non-PDF file: " + upload.fileName());
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
                         }
-                    } else {
-                        System.out.println("Skipping non-PDF file: " + upload.fileName());
                     }
-                } catch (IOException e) {
+
+
+                    InsertOneResult ins = pdfdb.insertOne(doc);
+                    if (ins.wasAcknowledged()) {
+                        job.put("message", "success");
+                    } else {
+                        job.put("message", "fail");
+                    }
+                    ctx.response().end(job.encode());
+                    System.out.println("uploaded maybe");
+
+                } catch (Exception e) {
                     e.printStackTrace();
+                    ctx.response().setStatusCode(500).end("Failed to save PDFs with GridFS");
+                }
+
+                for (FileUpload upload : ctx.fileUploads()) {
+                    try {
+                        Files.deleteIfExists(Paths.get(upload.uploadedFileName()));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
+            else{
+                JsonObject job=new JsonObject().put("message","Unauthorized Access");
+                ctx.response().setStatusCode(401).end(job.encode());
 
-            // Store metadata and reference to GridFS files
-            MongoCollection<Document> collection = database.getCollection("qpimage");
-
-            Document doc = new Document("course", name)
-                    .append("courseid", courseid)
-                    .append("department", department)
-                    .append("program", courseName)
-                    .append("term", examTerm)
-                    .append("year", year)
-                    .append("fileIds", pdfIds);  // Save GridFS file references
-
-            InsertOneResult ins= collection.insertOne(doc);
-            if(ins.wasAcknowledged()){
-                job.put("message","success");
-            }else{
-                job.put("message","fail");
             }
-            ctx.response().end(job.encode());
-            System.out.println("uploaded maybe");
+        }
+        else {
+            JsonObject job=new JsonObject().put("message","Expired or Invalid");
+            ctx.response().setStatusCode(401).end(job.encode());
 
-        } catch (Exception e) {
-            e.printStackTrace();
-            ctx.response().setStatusCode(500).end("Failed to save PDFs with GridFS");
         }
     }
 
