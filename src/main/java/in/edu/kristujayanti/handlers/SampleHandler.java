@@ -24,6 +24,9 @@ public class SampleHandler extends AbstractVerticle {
         router.post("/qvault/resetpass").handler(smp::resetpassword);
         router.post("/qvault/uploadQP").handler(smp::handleupload);
         router.put("/qvault/handleupdate").handler(smp::handleupdate);
+        router.delete("/qvault/handledelete").handler(smp::deleterecord);
+
+        router.get("/qvault/getpdf").handler(smp::getpdfbyid);
 
 
 
