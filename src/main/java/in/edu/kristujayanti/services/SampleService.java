@@ -244,7 +244,7 @@ public class SampleService extends AbstractVerticle {
             Bson filt1=Filters.eq("email",email);
             Document matchdoc= usersdb.find(filt1).first();
 
-            if(matchdoc.getString("email")!=null && matchdoc.getString("email").equals(email) && matchdoc.getString("role").equals(role) && role.equals("Admin"))
+            if(matchdoc.getString("email")!=null && matchdoc.getString("role").equals(role) && role.equals("Admin"))
             {
                 System.out.println("role and user valid valid succes");
 
@@ -255,6 +255,7 @@ public class SampleService extends AbstractVerticle {
                 String courseName = ctx.request().getFormAttribute("program");
                 String examTerm = ctx.request().getFormAttribute("term");
                 String year = ctx.request().getFormAttribute("year");
+                String type=ctx.request().getFormAttribute("type");
                 JsonObject job = new JsonObject();
 
                 try {
@@ -274,9 +275,10 @@ public class SampleService extends AbstractVerticle {
                                             .append("courseid", courseid)
                                             .append("department", department)
                                             .append("program", courseName)
+                                            .append("type",type)
                                             .append("term", examTerm)
                                             .append("year", year)
-                                            .append("fileId", fileId);
+                                            .append("fileid", fileId);
                                 }
                             } else {
                                 System.out.println("Skipping non-PDF file: " + upload.fileName());
@@ -323,202 +325,143 @@ public class SampleService extends AbstractVerticle {
     }
 
 
+    public void handleupdate(RoutingContext ctx){
+        ctx.response().setChunked(true);
+        String auth=ctx.request().getHeader("Authorization");
 
-    public void sendOTPmail(String token,String email){
-        String to = email;
-        String from = srt.from;
+        System.out.println("upload called");
 
-        final String username = srt.username;
-        final String password = srt.password;
-        String host = "smtp.gmail.com";
+        if(auth==null || !auth.startsWith("Bearer ")){
+            JsonObject job=new JsonObject().put("message","Invalid message");
+            ctx.response().end(job.encode());
+            System.out.println("auth null IF");
+            return;
+        }
 
-        Properties props = new Properties();
-        props.put("mail.smtp.auth", "true");
-        props.put("mail.smtp.starttls.enable", "true");
-        props.put("mail.smtp.host", host);
-        props.put("mail.smtp.port", "587");
+        String token = auth.replace("Bearer ", "");
+        if(jtil.isTokenValid(token)) {
+            System.out.println("token valid succes");
+            String email = jtil.extractEmail(token);
+            String role = jtil.extractRole(token);
+            Bson filt1 = Filters.eq("email", email);
+            Document matchdoc = usersdb.find(filt1).first();
 
-        // create the Session object
-        Session session = Session.getInstance(props,
-                new Authenticator() {
-                    @Override
-                    protected PasswordAuthentication getPasswordAuthentication() {
-                        return new PasswordAuthentication(username, password);
+            if (matchdoc.getString("email") != null && matchdoc.getString("role").equals(role) && role.equals("Admin")) {
+                System.out.println("role and user valid valid succes");
+                String contentType = ctx.request().getHeader("Content-Type");
+                if(contentType!=null && contentType.contains("application/json")){
+                    JsonObject body=ctx.body().asJsonObject();
+                    ObjectId id=new ObjectId(body.getString("id"));
+                    Bson filter = Filters.eq("_id",id);
+                    Bson update = Updates.combine(
+                            Updates.set("course", body.getString("course")),
+                            Updates.set("courseid", body.getString("courseid")),
+                            Updates.set("department", body.getString("department")),
+                            Updates.set("program", body.getString("program")),
+                            Updates.set("type", body.getString("type")),
+                            Updates.set("term", body.getString("term")),
+                            Updates.set("year", body.getString("year"))
+                            );
+
+                    UpdateResult result2 = pdfdb.updateOne(filter, update);
+                    if(result2.getModifiedCount()!=0){
+                        JsonObject job=new JsonObject().put("message","Updated successfully");
+                        ctx.response().setStatusCode(200).end(job.encode());
+                        return;
                     }
-                });
+                    else{
+                        JsonObject job=new JsonObject().put("message","Update Failed");
+                        ctx.response().setStatusCode(400).end(job.encode());
+                        return;
+                    }
 
-        try {
-            // create a MimeMessage object
-            Message message = new MimeMessage(session);
-            // set From email field
-            message.setFrom(new InternetAddress(from));
-            // set To email field
-            message.setRecipient(Message.RecipientType.TO, new InternetAddress(to));
-            // set email subject field
-            message.setSubject("Verify your account with this Code");
-            // set the content of the email message
-            String htmlContent =  "<!DOCTYPE html>\n" +
-                    "<html>\n" +
-                    "  <body style=\"font-family: Arial, sans-serif; padding: 20px; background-color: #ffffff;\">\n" +
-                    "   \n" +
-                    "    <!-- Logo -->\n" +
-                    "    <div style=\"text-align: center; margin-bottom: 20px;\">\n" +
-                    "      <img src=\"https://i.postimg.cc/QdKHj2Wp/Screenshot-2025-07-15-110351.png\n\" alt=\"Qvault Logo\" width=\"400\" height=\"225\"/>\n" +
-                    "    </div>\n" +
-                    "\n" +
-                    "    <!-- Heading -->\n" +
-                    "    <h2 style=\"color: #333; text-align: center; text-decoration: underline; text-underline-offset: 4px; font-size: 30px;\" >Verification Code</h2>\n" +
-                    "\n" +
-                    "    <!-- Message -->\n" +
-                    "    <p style=\"font-size: 15px;\">Hi there,</p>\n" +
-                    "    <p style=\"font-size: 15px;\">Please use the Verification Code below to verify your Account:</p>\n" +
-                    "\n" +
-                    "    <!-- Token Box -->\n" +
-                    "    <div style=\"\n" +
-                    "      text-align: center;\n" +
-                    "      font-size: 35px;\n" +
-                    "      font-weight: bold;\n" +
-                    "      background: #f4f4f4;\n" +
-                    "      border-radius: 8px;\n" +
-                    "      padding: 14px;\n" +
-                    "      width: fit-content;\n" +
-                    "      margin: 20px auto;\n" +
-                    "      color: #0066cc;\n" +
-                    "      font-family: 'Courier New', Courier, monospace;\n" +
-                    "      letter-spacing: 2px;\n" +
-                    "    \">\n" +
-                    token +
-                    "    </div>\n" +
-                    "\n" +
-                    "    <!-- Expiry -->\n" +
-                    "    <p style=\"color: red; font-weight: bold;\">Token is only valid for 5 Minutes.</p>\n" +
-                    "\n" +
-                    "    <!-- Ignore note -->\n" +
-                    "    <p style=\"font-size: 14px; color: #555;\">\n" +
-                    "      If you did not request this Verification code, someone is trying to use your account to sign up on our website.\n" +
-                    "    </p>\n" +
-                    "\n" +
-                    "    <!-- Footer -->\n" +
-                    "    <hr style=\"margin-top: 40px; border: none; border-top: 1px solid #ccc;\" />\n" +
-                    "    <p style=\"font-size: 13px; color: #888;\">\n" +
-                    "      Regards,<br />\n" +
-                    "      <strong>The Qvault Team</strong><br />\n" +
-                    "      © 2025 Qvault Inc. All rights reserved.\n" +
-                    "    </p>\n" +
-                    "  </body>\n" +
-                    "</html>";
 
-            message.setContent(htmlContent, "text/html");
+                } else if(contentType!=null && contentType.contains("multipart/form-data")){
+                    ObjectId id=new ObjectId(ctx.request().getFormAttribute("id"));
+                    ObjectId pdfid=new ObjectId(ctx.request().getFormAttribute("fileid"));
 
-            // send the email message
-            Transport.send(message);
 
-            System.out.println("Email Message token Sent Successfully!");
+                    ObjectId newpdfid= null;
+                    GridFSBucket gridFSBucket = GridFSBuckets.create(database);
 
-        } catch (MessagingException e) {
-            throw new RuntimeException(e);
+                    for (FileUpload upload : ctx.fileUploads()) {
+                        try {
+                            if (upload.contentType().equals("application/pdf")) {
+                                Path filePath = Paths.get(upload.uploadedFileName());
+                                try (InputStream pdfStream = Files.newInputStream(filePath)) {
+                                    newpdfid = gridFSBucket.uploadFromStream(upload.fileName(), pdfStream);
+
+                                }
+                            } else {
+                                System.out.println("Skipping non-PDF file: " + upload.fileName());
+                            }
+                        } catch (IOException e) {
+                            e.printStackTrace();
+                        }
+                    }
+
+                    if (newpdfid == null) {
+                        ctx.response().setStatusCode(400)
+                                .end(new JsonObject().put("message", "No valid PDF uploaded").encode());
+                        return;
+                    }
+
+                    gridFSBucket.delete(pdfid);
+
+                    Bson filter = Filters.eq("_id",id);
+                    Bson update = Updates.combine(
+                            Updates.set("course", ctx.request().getFormAttribute("course")),
+                            Updates.set("courseid", ctx.request().getFormAttribute("courseid")),
+                            Updates.set("department", ctx.request().getFormAttribute("department")),
+                            Updates.set("program", ctx.request().getFormAttribute("program")),
+                            Updates.set("type", ctx.request().getFormAttribute("type")),
+                            Updates.set("term", ctx.request().getFormAttribute("term")),
+                            Updates.set("year", ctx.request().getFormAttribute("year")),
+                            Updates.set("fileid", newpdfid)
+
+                    );
+
+                    UpdateResult result2 = pdfdb.updateOne(filter, update);
+                    if(result2.getModifiedCount()!=0){
+                        JsonObject job=new JsonObject().put("message","Updated successfully");
+                        ctx.response().setStatusCode(200).end(job.encode());
+                        return;
+                    }
+                    else{
+                        JsonObject job=new JsonObject().put("message","Update Failed");
+                        ctx.response().setStatusCode(400).end(job.encode());
+                        return;
+                    }
+
+
+
+                }
+                else{
+                    ctx.response().setStatusCode(400).end("Unsupported Content Type.");
+                    return;
+                }
+
+            }
+
+        }else{
+            JsonObject job=new JsonObject().put("message","Expired or Invalid");
+            ctx.response().setStatusCode(401).end(job.encode());
+            return;
+        }
+        for (FileUpload upload : ctx.fileUploads()) {
+            try {
+                Files.deleteIfExists(Paths.get(upload.uploadedFileName()));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
     }
 
+    public void deleterecord(RoutingContext ctx){
 
-    public void sendresetmail(String token,String email){
-        String to = email;
-        String from = srt.from;
-
-        final String username = srt.username;
-        final String password = srt.password;
-        String host = "smtp.gmail.com";
-
-        Properties props = new Properties();
-        props.put("mail.smtp.auth", "true");
-        props.put("mail.smtp.starttls.enable", "true");
-        props.put("mail.smtp.host", host);
-        props.put("mail.smtp.port", "587");
-
-        // create the Session object
-        Session session = Session.getInstance(props,
-                new Authenticator() {
-                    @Override
-                    protected PasswordAuthentication getPasswordAuthentication() {
-                        return new PasswordAuthentication(username, password);
-                    }
-                });
-
-        try {
-            // create a MimeMessage object
-            Message message = new MimeMessage(session);
-            // set From email field
-            message.setFrom(new InternetAddress(from));
-            // set To email field
-            message.setRecipient(Message.RecipientType.TO, new InternetAddress(to));
-            // set email subject field
-            message.setSubject("Reset your QVault password");
-            // set the content of the email message
-            String htmlContent =  "<!DOCTYPE html>\n" +
-                    "<html>\n" +
-                    "  <body style=\"font-family: Arial, sans-serif; padding: 20px; background-color: #ffffff;\">\n" +
-                    "   \n" +
-                    "    <!-- Logo -->\n" +
-                    "    <div style=\"text-align: center; margin-bottom: 20px;\">\n" +
-                    "      <img src=\"https://i.postimg.cc/QdKHj2Wp/Screenshot-2025-07-15-110351.png\n\" alt=\"Qvault Logo\" width=\"400\" height=\"225\"/>\n" +
-                    "    </div>\n" +
-                    "\n" +
-                    "    <!-- Heading -->\n" +
-                    "    <h2 style=\"color: #333; text-align: center; text-decoration: underline; text-underline-offset: 4px; font-size: 27px;\" >Password Reset Code</h2>\n" +
-                    "\n" +
-                    "    <!-- Message -->\n" +
-                    "    <p style=\"font-size: 15px;\">Hi there,</p>\n" +
-                    "    <p style=\"font-size: 15px;\">Please use the Reset Code below to reset your password:</p>\n" +
-                    "\n" +
-                    "    <!-- Token Box -->\n" +
-                    "    <div style=\"\n" +
-                    "      text-align: center;\n" +
-                    "      font-size: 35px;\n" +
-                    "      font-weight: bold;\n" +
-                    "      background: #f4f4f4;\n" +
-                    "      border-radius: 8px;\n" +
-                    "      padding: 14px;\n" +
-                    "      width: fit-content;\n" +
-                    "      margin: 20px auto;\n" +
-                    "      color: #0066cc;\n" +
-                    "      font-family: 'Courier New', Courier, monospace;\n" +
-                    "      letter-spacing: 2px;\n" +
-                    "    \">\n" +
-                    token +
-                    "    </div>\n" +
-                    "\n" +
-                    "    <!-- Expiry -->\n" +
-                    "    <p style=\"color: red; font-weight: bold;\">Token is only valid for 5 Minutes.</p>\n" +
-                    "\n" +
-                    "    <!-- Ignore note -->\n" +
-                    "    <p style=\"font-size: 14px; color: #555;\">\n" +
-                    "      If you did not request this Reset Code, someone is trying access your account.\n" +
-                    "    </p>\n" +
-                    "\n" +
-                    "    <!-- Footer -->\n" +
-                    "    <hr style=\"margin-top: 40px; border: none; border-top: 1px solid #ccc;\" />\n" +
-                    "    <p style=\"font-size: 13px; color: #888;\">\n" +
-                    "      Regards,<br />\n" +
-                    "      <strong>The Qvault Team</strong><br />\n" +
-                    "      © 2025 Qvault Inc. All rights reserved.\n" +
-                    "    </p>\n" +
-                    "  </body>\n" +
-                    "</html>";
-
-            message.setContent(htmlContent, "text/html");
-
-            // send the email message
-            Transport.send(message);
-
-            System.out.println("Email Message token Sent Successfully!");
-
-        } catch (MessagingException e) {
-            throw new RuntimeException(e);
-        }
 
     }
-
 
 
 
