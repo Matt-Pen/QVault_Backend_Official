@@ -26,7 +26,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
@@ -78,7 +77,7 @@ public class AWSEmail {
                     .build();
 
             SendEmailRequest emailRequest = SendEmailRequest.builder()
-                    .fromEmailAddress("qvaultkristujayanti@gmail.com") // ✅ added
+                    .fromEmailAddress("qvaultkristujayanti@gmail.com")
                     .content(EmailContent.builder().raw(rawMessage).build())
                     .build();
 
@@ -102,53 +101,61 @@ public class AWSEmail {
 
 
         String templatePath = "src/main/java/in/edu/kristujayanti/emailtemplates/signupemail.html";
-        String logoBase64Path = "src/main/java/in/edu/kristujayanti/emailtemplates/qvaultlogo.txt";
+        String logoPath = "src/main/java/in/edu/kristujayanti/emailtemplates/qvaultlogo.png";
 
         try {
-
             String htmlBody = Files.readString(Paths.get(templatePath));
 
 
-            String logoBase64 = Files.readString(Paths.get(logoBase64Path)).trim();
-            String logoDataUri = "data:image/png;base64," + logoBase64;
-            placeholders.put("logo", logoDataUri);
+            htmlBody = htmlBody.replace("{{logo}}", "cid:logoImage");
 
 
             for (Map.Entry<String, String> entry : placeholders.entrySet()) {
                 htmlBody = htmlBody.replace("{{" + entry.getKey() + "}}", entry.getValue());
             }
 
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            Session session = Session.getDefaultInstance(new Properties());
+            MimeMessage message = new MimeMessage(session);
+            message.setFrom(new InternetAddress("qvaultkristujayanti@gmail.com"));
+            message.setRecipients(jakarta.mail.Message.RecipientType.TO, InternetAddress.parse(email));
+            message.setSubject("Your Sign-Up OTP");
 
-            Destination receiver = Destination.builder()
-                    .toAddresses(email)
-                    .build();
 
-            Message msg = Message.builder()
-                    .subject(Content.builder().data("Sign Up OTP!!").build())
-                    .body(Body.builder()
-                            .html(Content.builder().data(htmlBody).build())
-                            .build())
-                    .build();
+            MimeMultipart multipart = new MimeMultipart("related");
 
-            EmailContent emailContent = EmailContent.builder()
-                    .simple(msg)
+            // HTML body
+            MimeBodyPart htmlPart = new MimeBodyPart();
+            htmlPart.setContent(htmlBody, "text/html; charset=UTF-8");
+            multipart.addBodyPart(htmlPart);
+
+
+            MimeBodyPart imagePart = new MimeBodyPart();
+            imagePart.attachFile(logoPath);
+            imagePart.setContentID("<logoImage>");
+            imagePart.setDisposition(MimeBodyPart.INLINE);
+            multipart.addBodyPart(imagePart);
+
+            // Combine and write to output
+            message.setContent(multipart);
+            message.writeTo(outputStream);
+
+            // Build SES raw message
+            RawMessage rawMessage = RawMessage.builder()
+                    .data(SdkBytes.fromByteArray(outputStream.toByteArray()))
                     .build();
 
             SendEmailRequest emailRequest = SendEmailRequest.builder()
-                    .destination(receiver)
-                    .content(emailContent)
                     .fromEmailAddress("qvaultkristujayanti@gmail.com")
+                    .content(EmailContent.builder().raw(rawMessage).build())
                     .build();
 
 
             client.sendEmail(emailRequest);
-            System.out.println("✅ Signup OTP email sent successfully to " + email);
+            System.out.println("✅ Sign-up OTP email sent successfully to " + email);
 
-        } catch (IOException e) {
-            System.err.println("Error reading template or logo file: " + e.getMessage());
-        } catch (SesV2Exception e) {
-            System.err.println("SES error: " + e.awsErrorDetails().errorMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
-
 }
