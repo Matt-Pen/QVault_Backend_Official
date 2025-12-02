@@ -15,6 +15,7 @@ import in.edu.kristujayanti.secretclass;
 import io.vertx.core.Vertx;
 import io.vertx.core.buffer.Buffer;
 import io.vertx.core.http.HttpServer;
+import io.vertx.core.json.Json;
 import io.vertx.core.json.JsonArray;
 import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.FileUpload;
@@ -53,7 +54,7 @@ public class SampleService extends AbstractVerticle {
     Jedis jedis = new Jedis("localhost", 6379);
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     secretclass srt = new secretclass();
-    AWSEmail ses= new AWSEmail();
+    AWSEmail ses = new AWSEmail();
     Vertx vertx = Vertx.vertx();
     HttpServer server = vertx.createHttpServer();
     String connectionString = srt.constr;
@@ -64,23 +65,22 @@ public class SampleService extends AbstractVerticle {
     MongoCollection<Document> pdfdb = database.getCollection("QuestionPapers");
 
 
-
-    public void usersignup(RoutingContext ctx){
-        JsonObject body=ctx.body().asJsonObject();
-        String email=body.getString("email");
-        String otp= body.getString("otp");
-        String newpass= body.getString("password");
-        String status="";
+    public void usersignup(RoutingContext ctx) {
+        JsonObject body = ctx.body().asJsonObject();
+        String email = body.getString("email");
+        String otp = body.getString("otp");
+        String newpass = body.getString("password");
+        String status = "";
 
         Document docs = usersdb.find().filter(Filters.eq("email", email)).first();
-        if (docs!=null){
-            status="exist";
-        }else {
+        if (docs != null) {
+            status = "exist";
+        } else {
             if (otp == null && newpass == null && email != null) {
                 String send_otp = generateID(6);
                 System.out.println(send_otp);
-                setotp(send_otp,email);
-                ses.sendawssignup(send_otp,email);
+                setotp(send_otp, email);
+                ses.sendawssignup(send_otp, email);
 //                sendOTPmail(send_otp, email);
                 status = "OTP Sent";
             } else if (email != null && otp != null && newpass != null) {
@@ -88,28 +88,28 @@ public class SampleService extends AbstractVerticle {
                 if (sent_otp.equals(email)) {
                     if (email.matches(".*\\d.*") && email.contains("@kristujayanti.com")) {
                         String role = "Guest";
-                        String designation="Student";
+                        String designation = "Student";
                         String hashpass = hashPassword(newpass);
                         System.out.println(hashpass);
-                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation",designation);
+                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation", designation);
                         InsertOneResult insres = usersdb.insertOne(insdoc);
                         if (insres.wasAcknowledged()) {
                             status = "success";
                             deltoken(otp);
-                        }else{
+                        } else {
                             deltoken(otp);
                         }
                     } else if (email.contains("@kristujayanti.com")) {
                         String role = "Guest";
-                        String designation="Faculty";
+                        String designation = "Faculty";
                         String hashpass = hashPassword(newpass);
                         System.out.println(hashpass);
-                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation",designation);
+                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation", designation);
                         InsertOneResult insres = usersdb.insertOne(insdoc);
                         if (insres.wasAcknowledged()) {
                             status = "success";
                             deltoken(otp);
-                        }else{
+                        } else {
                             deltoken(otp);
                         }
                     }
@@ -123,68 +123,65 @@ public class SampleService extends AbstractVerticle {
             }
         }
 
-        JsonObject job=new JsonObject().put("message",status);
+        JsonObject job = new JsonObject().put("message", status);
         ctx.response().end(job.encode());
     }
 
-    public void userlogin(RoutingContext ctx){
-        JsonObject body=ctx.body().asJsonObject();
-        String email=body.getString("email");
-        String pass=body.getString("password");
+    public void userlogin(RoutingContext ctx) {
+        JsonObject body = ctx.body().asJsonObject();
+        String email = body.getString("email");
+        String pass = body.getString("password");
 
-        String acctoken="";
-        String reftoken="";
-        String status="";
+        String acctoken = "";
+        String reftoken = "";
+        String status = "";
 
-        String token2=jedis.get("jwt:ref"+email);
-        if (token2!=null){
-            deltoken("jwt:acc"+email);
-            deltoken("jwt:ref"+email);
+        String token2 = jedis.get("jwt:ref" + email);
+        if (token2 != null) {
+            deltoken("jwt:acc" + email);
+            deltoken("jwt:ref" + email);
 
         }
 
-        Bson filt1=Filters.eq("email",email);
-        Document matchdoc= usersdb.find(filt1).first();
-        if(matchdoc==null){
-            status="invalid username";
-        }
-        else{
-            String dbpass=matchdoc.getString("pass");
+        Bson filt1 = Filters.eq("email", email);
+        Document matchdoc = usersdb.find(filt1).first();
+        if (matchdoc == null) {
+            status = "invalid username";
+        } else {
+            String dbpass = matchdoc.getString("pass");
 
-            if(verifyPassword(pass,dbpass)){
-                status="Login success";
-                String dbrole=matchdoc.getString("role");
-                acctoken= jtil.generateAccessToken(email,30,dbrole);
-                reftoken=jtil.generateRefreshToken(email,7,dbrole);
-                setoken("jwt:ref"+email,reftoken);
-                System.out.println(getoken("jwt:ref"+email));
-            }
-            else{
-                status="invalid passoword";
+            if (verifyPassword(pass, dbpass)) {
+                status = "Login success";
+                String dbrole = matchdoc.getString("role");
+                acctoken = jtil.generateAccessToken(email, 30, dbrole);
+                reftoken = jtil.generateRefreshToken(email, 7, dbrole);
+                setoken("jwt:ref" + email, reftoken);
+                System.out.println(getoken("jwt:ref" + email));
+            } else {
+                status = "invalid passoword";
             }
 
         }
-        JsonObject job=new JsonObject().put("message",status).put("access token",acctoken).put("refresh token",reftoken);
+        JsonObject job = new JsonObject().put("message", status).put("access token", acctoken).put("refresh token", reftoken);
         ctx.response().end(job.encode());
     }
 
-    public void resetpassword(RoutingContext ctx){
-        JsonObject body=ctx.body().asJsonObject();
-        String email=body.getString("email");
-        String otp=body.getString("otp");
-        String pass=body.getString("password");
+    public void resetpassword(RoutingContext ctx) {
+        JsonObject body = ctx.body().asJsonObject();
+        String email = body.getString("email");
+        String otp = body.getString("otp");
+        String pass = body.getString("password");
 
-        String status="";
-        if (otp==null && pass==null){
+        String status = "";
+        if (otp == null && pass == null) {
             String send_otp = generateID(6);
             System.out.println(send_otp);
-            setotp(send_otp,email);
-            ses.sendawsforgotpass(send_otp,email);
+            setotp(send_otp, email);
+            ses.sendawsforgotpass(send_otp, email);
 //            sendresetmail(send_otp, email);
             status = "OTP Sent";
 
-        }else if(email!=null && otp!=null & pass!=null)
-        {
+        } else if (email != null && otp != null & pass != null) {
             String sent_otp = getoken(otp);
             if (sent_otp.equals(email)) {
                 String hashpass = hashPassword(pass);
@@ -194,20 +191,17 @@ public class SampleService extends AbstractVerticle {
                 if (res.wasAcknowledged()) {
                     status = "success";
                     deltoken(sent_otp);
-                }else{
-                    status="update failed";
+                } else {
+                    status = "update failed";
                 }
             }
+        } else {
+            status = "invalid information";
         }
-        else{
-            status="invalid information";
-        }
-        JsonObject job=new JsonObject().put("message",status);
+        JsonObject job = new JsonObject().put("message", status);
         ctx.response().end(job.encode());
 
     }
-
-
 
 
     public static String generateID(int length) {
@@ -224,28 +218,26 @@ public class SampleService extends AbstractVerticle {
 
     public void handleupload(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        String auth=ctx.request().getHeader("Authorization");
+        String auth = ctx.request().getHeader("Authorization");
 
         System.out.println("upload called");
 
-        if(auth==null || !auth.startsWith("Bearer ")){
-            JsonObject job=new JsonObject().put("message","Invalid message");
+        if (auth == null || !auth.startsWith("Bearer ")) {
+            JsonObject job = new JsonObject().put("message", "Invalid message");
             ctx.response().end(job.encode());
             System.out.println("auth null IF");
             return;
         }
 
         String token = auth.replace("Bearer ", "");
-        if(jtil.isTokenValid(token))
-        {
+        if (jtil.isTokenValid(token)) {
             System.out.println("token valid succes");
-            String email= jtil.extractEmail(token);
-            String role=jtil.extractRole(token);
-            Bson filt1=Filters.eq("email",email);
-            Document matchdoc= usersdb.find(filt1).first();
+            String email = jtil.extractEmail(token);
+            String role = jtil.extractRole(token);
+            Bson filt1 = Filters.eq("email", email);
+            Document matchdoc = usersdb.find(filt1).first();
 
-            if(matchdoc !=null && matchdoc.getString("email")!=null && matchdoc.getString("role").equals(role) && role.equals("Admin"))
-            {
+            if (matchdoc != null && matchdoc.getString("email") != null && matchdoc.getString("role").equals(role) && role.equals("Admin")) {
                 System.out.println("role and user valid valid succes");
 
 
@@ -255,9 +247,9 @@ public class SampleService extends AbstractVerticle {
                 String courseName = ctx.request().getFormAttribute("program");
                 String examTerm = ctx.request().getFormAttribute("term");
                 String year = ctx.request().getFormAttribute("year");
-                String type=ctx.request().getFormAttribute("type");
+                String type = ctx.request().getFormAttribute("type");
                 JsonObject job = new JsonObject();
-                ObjectId fileid=null;
+                ObjectId fileid = null;
 
                 try {
 
@@ -283,7 +275,7 @@ public class SampleService extends AbstractVerticle {
                             .append("courseid", courseid)
                             .append("department", department)
                             .append("program", courseName)
-                            .append("type",type)
+                            .append("type", type)
                             .append("term", examTerm)
                             .append("year", year)
                             .append("fileid", fileid);
@@ -311,15 +303,13 @@ public class SampleService extends AbstractVerticle {
                 }
 
 
-            }
-            else{
-                JsonObject job=new JsonObject().put("message","Unauthorized Access");
+            } else {
+                JsonObject job = new JsonObject().put("message", "Unauthorized Access");
                 ctx.response().setStatusCode(403).end(job.encode());
 
             }
-        }
-        else {
-            JsonObject job=new JsonObject().put("message","Expired or Invalid");
+        } else {
+            JsonObject job = new JsonObject().put("message", "Expired or Invalid");
             ctx.response().setStatusCode(401).end(job.encode());
 
         }
@@ -354,7 +344,7 @@ public class SampleService extends AbstractVerticle {
             Bson filt1 = Filters.eq("email", email);
             Document matchdoc = usersdb.find(filt1).first();
 
-            if (matchdoc !=null && matchdoc.getString("email") != null && matchdoc.getString("role").equals(role) && role.equals("Admin")) {
+            if (matchdoc != null && matchdoc.getString("email") != null && matchdoc.getString("role").equals(role) && role.equals("Admin")) {
                 System.out.println("role and user valid valid succes");
                 String contentType = ctx.request().getHeader("Content-Type");
                 if (contentType != null && contentType.contains("application/json")) {
@@ -469,176 +459,285 @@ public class SampleService extends AbstractVerticle {
         }
     }
 
-    public void deleterecord(RoutingContext ctx){
+    public void deleterecord(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        String auth=ctx.request().getHeader("Authorization");
+        String auth = ctx.request().getHeader("Authorization");
 
         System.out.println("upload called");
 
-        if(auth==null || !auth.startsWith("Bearer ")){
-            JsonObject job=new JsonObject().put("message","Invalid message");
+        if (auth == null || !auth.startsWith("Bearer ")) {
+            JsonObject job = new JsonObject().put("message", "Invalid message");
             ctx.response().end(job.encode());
             System.out.println("auth null IF");
             return;
         }
 
         String token = auth.replace("Bearer ", "");
-        if(jtil.isTokenValid(token)) {
+        if (jtil.isTokenValid(token)) {
             System.out.println("token valid succes");
             String email = jtil.extractEmail(token);
             String role = jtil.extractRole(token);
             Bson filt1 = Filters.eq("email", email);
             Document matchdoc = usersdb.find(filt1).first();
 
-            if (matchdoc !=null && matchdoc.getString("email") != null &&  matchdoc.getString("role").equals(role) && role.equals("Admin")) {
+            if (matchdoc != null && matchdoc.getString("email") != null && matchdoc.getString("role").equals(role) && role.equals("Admin")) {
                 System.out.println("role and user valid valid succes");
-                JsonObject body=ctx.body().asJsonObject();
-                ObjectId id= new ObjectId(body.getString("id"));
+                JsonObject body = ctx.body().asJsonObject();
+                ObjectId id = new ObjectId(body.getString("id"));
 
                 GridFSBucket gridFSBucket = GridFSBuckets.create(database);
-                Document doc= pdfdb.find(Filters.eq("_id",id)).first();
-                if(doc==null){
+                Document doc = pdfdb.find(Filters.eq("_id", id)).first();
+                if (doc == null) {
                     JsonObject job = new JsonObject().put("message", "Record not found");
                     ctx.response().setStatusCode(400).end(job.encode());
                     return;
                 }
 
-                try{
-                    ObjectId pdfid=doc.getObjectId("fileid");
+                try {
+                    ObjectId pdfid = doc.getObjectId("fileid");
                     gridFSBucket.delete(pdfid);
 
                 } catch (Exception e) {
                     e.printStackTrace();
-                    JsonObject job=new JsonObject().put("message","PDF Grif Fs Delete Failed");
+                    JsonObject job = new JsonObject().put("message", "PDF Grif Fs Delete Failed");
                     ctx.response().setStatusCode(400).end(job.encode());
                     return;
 
                 }
 
-                DeleteResult result= pdfdb.deleteOne(Filters.eq("_id",id));
-                if(result.getDeletedCount()>0){
-                    JsonObject job=new JsonObject().put("message","Deleted Successfully");
+                DeleteResult result = pdfdb.deleteOne(Filters.eq("_id", id));
+                if (result.getDeletedCount() > 0) {
+                    JsonObject job = new JsonObject().put("message", "Deleted Successfully");
                     ctx.response().setStatusCode(200).end(job.encode());
                     return;
-                }
-                else{
-                    JsonObject job=new JsonObject().put("message","Delete Failed");
+                } else {
+                    JsonObject job = new JsonObject().put("message", "Delete Failed");
                     ctx.response().setStatusCode(500).end(job.encode());
                     return;
                 }
-            }else{
-                JsonObject job=new JsonObject().put("message","Unauthorized access attempt.");
+            } else {
+                JsonObject job = new JsonObject().put("message", "Unauthorized access attempt.");
                 ctx.response().setStatusCode(403).end(job.encode());
                 return;
             }
 
-        }else{
-            JsonObject job=new JsonObject().put("message","Expired or Invalid");
+        } else {
+            JsonObject job = new JsonObject().put("message", "Expired or Invalid");
             ctx.response().setStatusCode(401).end(job.encode());
             return;
         }
     }
 
-    public void getpdfbyid(RoutingContext ctx){
+
+    public void getpdfbyid2(RoutingContext ctx) {
+        if (JWTauthguest(ctx)) {
+            String auth = ctx.request().getHeader("Authorization");
+            String token = auth.replace("Bearer ", "");
+            String email = jtil.extractEmail(token);
+            String role = jtil.extractRole(token);
+            Bson filt1 = Filters.eq("email", email);
+            Document matchdoc = usersdb.find(filt1).first();
+
+            JsonObject body = ctx.body().asJsonObject();
+            ObjectId pdfid = new ObjectId(body.getString("fileid"));
+            try {
+                GridFSBucket gridFSBucket = GridFSBuckets.create(database);
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                gridFSBucket.downloadToStream(pdfid, outputStream);
+                byte[] pdfBytes = outputStream.toByteArray();
+
+                ctx.response()
+                        .putHeader("Content-Type", "application/pdf")
+                        .putHeader("Content-Disposition", "inline; filename=\"questionpaper.pdf\"")
+                        .putHeader("Content-Length", String.valueOf(pdfBytes.length))
+                        .end(Buffer.buffer(pdfBytes));
+
+            } catch (Exception e) {
+                JsonObject job = new JsonObject().put("message", "Pdf View Failed");
+                ctx.response().setStatusCode(500).end(job.encode());
+                return;
+            }
+
+            List<ObjectId> recents = matchdoc.getList("recents", ObjectId.class);
+            if (recents == null) {
+                List<ObjectId> recents2 = new ArrayList<>();
+                recents2.add(pdfid);
+                Bson update = Updates.set("recents", recents2);
+                UpdateResult result = usersdb.updateOne(Filters.eq("email", email), update);
+                System.out.println("recents2" + recents2);
+
+                if (result.getModifiedCount() > 0) {
+                    System.out.println("recents inserted");
+                } else {
+                    System.out.println("recents insert FAILED");
+                }
+
+
+            } else {
+                if (recents.size() < 8) {
+                    recents.remove(pdfid);
+                    recents.add(0, pdfid);
+
+
+                } else if (recents.size() == 8) {
+                    if (!recents.contains(pdfid)) {
+                        recents.add(0, pdfid);
+                        recents.remove(recents.size() - 1);
+                    } else {
+                        recents.remove(pdfid);
+                        recents.add(0, pdfid);
+                    }
+                }
+                Bson update = Updates.set("recents", recents);
+                UpdateResult result = usersdb.updateOne(Filters.eq("email", email), update);
+                System.out.println("recents " + recents);
+                if (result.getModifiedCount() > 0) {
+                    System.out.println("recents inserted");
+                } else {
+                    System.out.println("recents insert FAILED");
+                }
+
+            }
+
+        }
+
+}
+
+    public void searchfilter(RoutingContext ctx) {
+        if (JWTauthguest(ctx)) {
+            int perpage=3;
+            JsonObject body = ctx.body().asJsonObject();
+            String course=body.getString("course");
+            String crscode=body.getString("code");
+            String year=body.getString("year");
+            String sess=body.getString("session");
+            int page=body.getInteger("page");
+
+            List<Bson> params=new ArrayList<>();
+            if(course!=null && !course.isEmpty()){
+                params.add(Filters.eq("course",course));
+            }
+            if(crscode!=null && !crscode.isEmpty()){
+                params.add(Filters.eq("courseid",crscode));
+            }
+            if(year!=null && !year.isEmpty()){
+                params.add(Filters.eq("year",year));
+            }
+            if(sess!=null && !sess.isEmpty()){
+                params.add(Filters.eq("term",sess));
+            }
+
+            Bson filter = params.isEmpty() ? new Document() : Filters.and(params);
+            JsonArray jarr=new JsonArray();
+            for( Document docs : pdfdb.find(filter).skip(page*perpage).limit(perpage)){
+                JsonObject json = new JsonObject();
+
+                ObjectId id = docs.getObjectId("_id");
+                json.put("_id", id.toHexString());
+
+                for (String key : docs.keySet()) {
+                    if (!key.equals("_id") && !key.equals("fileid")) {
+                        json.put(key, docs.get(key));
+                    }
+                }
+
+                ObjectId fileId = docs.getObjectId("fileid");
+                json.put("fileid", fileId.toHexString());
+
+                jarr.add(json);
+
+            }
+            if(!jarr.isEmpty()) {
+                ctx.response()
+                        .putHeader("Content-Type", "application/json")
+                        .end(jarr.encodePrettily());
+            }
+            else{
+                ctx.response()
+                        .putHeader("Content-Type", "application/json")
+                        .end(new JsonObject().put("page", "end").encode());
+            }
+
+        }
+
+    }
+
+
+
+    public Boolean JWTauthguest(RoutingContext ctx){
         ctx.response().setChunked(true);
-        String auth=ctx.request().getHeader("Authorization");
+        String auth = ctx.request().getHeader("Authorization");
 
-        System.out.println("upload called");
-
-        if(auth==null || !auth.startsWith("Bearer ")){
-            JsonObject job=new JsonObject().put("message","Invalid Auth type");
+        if (auth == null || !auth.startsWith("Bearer ")) {
+            JsonObject job = new JsonObject().put("message", "Invalid Auth type");
             ctx.response().end(job.encode());
             System.out.println("auth null IF");
-            return;
+            return false;
         }
 
         String token = auth.replace("Bearer ", "");
-        if(jtil.isTokenValid(token)) {
+        if (jtil.isTokenValid(token)) {
             System.out.println("token valid succes");
             String email = jtil.extractEmail(token);
             String role = jtil.extractRole(token);
             Bson filt1 = Filters.eq("email", email);
             Document matchdoc = usersdb.find(filt1).first();
 
-            if (matchdoc !=null && matchdoc.getString("email") != null &&  matchdoc.getString("role").equals(role) && (role.equals("Admin") || role.equals("Guest"))) {
+            if (matchdoc != null && matchdoc.getString("email") != null && matchdoc.getString("role").equals(role) && (role.equals("Admin") || role.equals("Guest"))) {
+                return true;
 
-                JsonObject body=ctx.body().asJsonObject();
-                ObjectId pdfid= new ObjectId(body.getString("fileid"));
-                try {
-                    GridFSBucket gridFSBucket = GridFSBuckets.create(database);
-                    ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-                    gridFSBucket.downloadToStream(pdfid, outputStream);
-                    byte[] pdfBytes = outputStream.toByteArray();
-
-                    ctx.response()
-                            .putHeader("Content-Type", "application/pdf")
-                            .putHeader("Content-Disposition", "inline; filename=\"questionpaper.pdf\"")
-                            .putHeader("Content-Length", String.valueOf(pdfBytes.length))
-                            .end(Buffer.buffer(pdfBytes));
-
-                }catch (Exception e){
-                    JsonObject job=new JsonObject().put("message","Pdf View Failed");
-                    ctx.response().setStatusCode(500).end(job.encode());
-                    return;
-                }
-
-                List<ObjectId> recents=matchdoc.getList("recents",ObjectId.class);
-                if(recents == null) {
-                    List<ObjectId> recents2= new ArrayList<>();
-                    recents2.add(pdfid);
-                    Bson update= Updates.set("recents",recents2);
-                    UpdateResult result= usersdb.updateOne(Filters.eq("email",email),update);
-                    System.out.println("recents2"+  recents2);
-
-                    if(result.getModifiedCount()>0){
-                        System.out.println("recents inserted");
-                    }else{
-                        System.out.println("recents insert FAILED");
-                    }
-
-
-                }else{
-                    if(recents.size()<8){
-                        recents.remove(pdfid);
-                        recents.add(0,pdfid);
-                        System.out.println("recentsss "+recents);
-
-                    } else if (recents.size()==8) {
-                        if(!recents.contains(pdfid)){
-                            recents.add(0,pdfid);
-                            recents.remove(recents.size()-1);
-                        }else{
-                            recents.remove(pdfid);
-                            recents.add(0,pdfid);
-                        }
-                    }
-                    Bson update= Updates.set("recents",recents);
-                    UpdateResult result= usersdb.updateOne(Filters.eq("email",email),update);
-                    System.out.println("recents "+recents);
-                    if(result.getModifiedCount()>0){
-                        System.out.println("recents inserted");
-                    }else{
-                        System.out.println("recents insert FAILED");
-                    }
-
-                }
-
-            }else{
-                JsonObject job=new JsonObject().put("message","Unauthorized access attempt.");
+            }
+            else {
+                JsonObject job = new JsonObject().put("message", "Unauthorized access attempt.");
                 ctx.response().setStatusCode(403).end(job.encode());
-                return;
+                return false;
 
             }
 
-        }else{
-            JsonObject job=new JsonObject().put("message","Expired or Invalid");
+        } else {
+            JsonObject job = new JsonObject().put("message", "Expired or Invalid");
             ctx.response().setStatusCode(401).end(job.encode());
-                return;
+            return false;
+        }
+    }
+    public Boolean JWTauthadmin(RoutingContext ctx){
+        ctx.response().setChunked(true);
+        String auth = ctx.request().getHeader("Authorization");
+
+        System.out.println("upload called");
+
+        if (auth == null || !auth.startsWith("Bearer ")) {
+            JsonObject job = new JsonObject().put("message", "Invalid Auth type");
+            ctx.response().end(job.encode());
+            System.out.println("auth null IF");
+            return false;
         }
 
+        String token = auth.replace("Bearer ", "");
+        if (jtil.isTokenValid(token)) {
+            System.out.println("token valid succes");
+            String email = jtil.extractEmail(token);
+            String role = jtil.extractRole(token);
+            Bson filt1 = Filters.eq("email", email);
+            Document matchdoc = usersdb.find(filt1).first();
+
+            if (matchdoc != null && matchdoc.getString("email") != null && matchdoc.getString("role").equals(role) && (role.equals("Admin"))) {
+                return true;
+
+            }
+            else {
+                JsonObject job = new JsonObject().put("message", "Unauthorized access attempt.");
+                ctx.response().setStatusCode(403).end(job.encode());
+                return false;
+
+            }
+
+        } else {
+            JsonObject job = new JsonObject().put("message", "Expired or Invalid");
+            ctx.response().setStatusCode(401).end(job.encode());
+            return false;
+        }
     }
-
-
 
 
     public String hashPassword (String rawPassword){

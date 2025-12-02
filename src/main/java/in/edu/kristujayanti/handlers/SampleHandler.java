@@ -26,8 +26,8 @@ public class SampleHandler extends AbstractVerticle {
         router.put("/qvault/handleupdate").handler(smp::handleupdate);
         router.delete("/qvault/handledelete").handler(smp::deleterecord);
 
-        router.get("/qvault/getpdf").handler(smp::getpdfbyid);
-
+        router.get("/qvault/getpdf").handler(smp::getpdfbyid2);
+        router.get("/qvault/search").handler(smp::searchfilter);
 
 
 
