@@ -35,6 +35,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.SQLOutput;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -218,27 +219,8 @@ public class SampleService extends AbstractVerticle {
 
     public void handleupload(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        String auth = ctx.request().getHeader("Authorization");
-
-        System.out.println("upload called");
-
-        if (auth == null || !auth.startsWith("Bearer ")) {
-            JsonObject job = new JsonObject().put("message", "Invalid message");
-            ctx.response().end(job.encode());
-            System.out.println("auth null IF");
-            return;
-        }
-
-        String token = auth.replace("Bearer ", "");
-        if (jtil.isTokenValid(token)) {
-            System.out.println("token valid succes");
-            String email = jtil.extractEmail(token);
-            String role = jtil.extractRole(token);
-            Bson filt1 = Filters.eq("email", email);
-            Document matchdoc = usersdb.find(filt1).first();
-
-            if (matchdoc != null && matchdoc.getString("email") != null && matchdoc.getString("role").equals(role) && role.equals("Admin")) {
-                System.out.println("role and user valid valid succes");
+        if(JWTauthadmin(ctx)){
+          System.out.println("role and user valid valid succes");
 
 
                 String name = ctx.request().getFormAttribute("course");
@@ -248,6 +230,7 @@ public class SampleService extends AbstractVerticle {
                 String examTerm = ctx.request().getFormAttribute("term");
                 String year = ctx.request().getFormAttribute("year");
                 String type = ctx.request().getFormAttribute("type");
+                String sem=ctx.request().getFormAttribute("sem");
                 JsonObject job = new JsonObject();
                 ObjectId fileid = null;
 
@@ -275,6 +258,7 @@ public class SampleService extends AbstractVerticle {
                             .append("courseid", courseid)
                             .append("department", department)
                             .append("program", courseName)
+                            .append("sem",sem)
                             .append("type", type)
                             .append("term", examTerm)
                             .append("year", year)
@@ -303,15 +287,6 @@ public class SampleService extends AbstractVerticle {
                 }
 
 
-            } else {
-                JsonObject job = new JsonObject().put("message", "Unauthorized Access");
-                ctx.response().setStatusCode(403).end(job.encode());
-
-            }
-        } else {
-            JsonObject job = new JsonObject().put("message", "Expired or Invalid");
-            ctx.response().setStatusCode(401).end(job.encode());
-
         }
         for (FileUpload upload : ctx.fileUploads()) {
             try {
@@ -325,27 +300,8 @@ public class SampleService extends AbstractVerticle {
 
     public void handleupdate(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        String auth = ctx.request().getHeader("Authorization");
-
-        System.out.println("upload called");
-
-        if (auth == null || !auth.startsWith("Bearer ")) {
-            JsonObject job = new JsonObject().put("message", "Invalid message");
-            ctx.response().end(job.encode());
-            System.out.println("auth null IF");
-            return;
-        }
-
-        String token = auth.replace("Bearer ", "");
-        if (jtil.isTokenValid(token)) {
-            System.out.println("token valid succes");
-            String email = jtil.extractEmail(token);
-            String role = jtil.extractRole(token);
-            Bson filt1 = Filters.eq("email", email);
-            Document matchdoc = usersdb.find(filt1).first();
-
-            if (matchdoc != null && matchdoc.getString("email") != null && matchdoc.getString("role").equals(role) && role.equals("Admin")) {
-                System.out.println("role and user valid valid succes");
+        if(JWTauthadmin(ctx)){
+             System.out.println("role and user valid valid succes");
                 String contentType = ctx.request().getHeader("Content-Type");
                 if (contentType != null && contentType.contains("application/json")) {
                     JsonObject body = ctx.body().asJsonObject();
@@ -358,7 +314,8 @@ public class SampleService extends AbstractVerticle {
                             Updates.set("program", body.getString("program")),
                             Updates.set("type", body.getString("type")),
                             Updates.set("term", body.getString("term")),
-                            Updates.set("year", body.getString("year"))
+                            Updates.set("year", body.getString("year")),
+                            Updates.set("sem", body.getString("sem"))
                     );
 
                     UpdateResult result2 = pdfdb.updateOne(filter, update);
@@ -420,6 +377,7 @@ public class SampleService extends AbstractVerticle {
                             Updates.set("type", ctx.request().getFormAttribute("type")),
                             Updates.set("term", ctx.request().getFormAttribute("term")),
                             Updates.set("year", ctx.request().getFormAttribute("year")),
+                            Updates.set("sem", ctx.request().getFormAttribute("sem")),
                             Updates.set("fileid", newpdfid)
 
                     );
@@ -441,13 +399,7 @@ public class SampleService extends AbstractVerticle {
                     return;
                 }
 
-            }
 
-
-        } else {
-            JsonObject job = new JsonObject().put("message", "Expired or Invalid");
-            ctx.response().setStatusCode(401).end(job.encode());
-            return;
         }
         for (FileUpload upload : ctx.fileUploads()) {
             try {
@@ -461,27 +413,9 @@ public class SampleService extends AbstractVerticle {
 
     public void deleterecord(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        String auth = ctx.request().getHeader("Authorization");
+        if(JWTauthadmin(ctx)){
 
-        System.out.println("upload called");
-
-        if (auth == null || !auth.startsWith("Bearer ")) {
-            JsonObject job = new JsonObject().put("message", "Invalid message");
-            ctx.response().end(job.encode());
-            System.out.println("auth null IF");
-            return;
-        }
-
-        String token = auth.replace("Bearer ", "");
-        if (jtil.isTokenValid(token)) {
-            System.out.println("token valid succes");
-            String email = jtil.extractEmail(token);
-            String role = jtil.extractRole(token);
-            Bson filt1 = Filters.eq("email", email);
-            Document matchdoc = usersdb.find(filt1).first();
-
-            if (matchdoc != null && matchdoc.getString("email") != null && matchdoc.getString("role").equals(role) && role.equals("Admin")) {
-                System.out.println("role and user valid valid succes");
+            System.out.println("role and user valid valid succes");
                 JsonObject body = ctx.body().asJsonObject();
                 ObjectId id = new ObjectId(body.getString("id"));
 
@@ -515,17 +449,7 @@ public class SampleService extends AbstractVerticle {
                     ctx.response().setStatusCode(500).end(job.encode());
                     return;
                 }
-            } else {
-                JsonObject job = new JsonObject().put("message", "Unauthorized access attempt.");
-                ctx.response().setStatusCode(403).end(job.encode());
-                return;
             }
-
-        } else {
-            JsonObject job = new JsonObject().put("message", "Expired or Invalid");
-            ctx.response().setStatusCode(401).end(job.encode());
-            return;
-        }
     }
 
 
@@ -661,7 +585,66 @@ public class SampleService extends AbstractVerticle {
         }
 
     }
+    public void studentHome(RoutingContext ctx){
+        ctx.response().setChunked(true);
+        if(JWTauthguest(ctx)){
+            System.out.println("Success student home validation.");
+            String auth = ctx.request().getHeader("Authorization");
+            String token = auth.replace("Bearer ", "");
+            String email = jtil.extractEmail(token);
+            String role = jtil.extractRole(token);
 
+            Document master_response=new Document();
+            //getting the drop-down list parameters
+            List<String> coursenames=pdfdb.distinct("course",String.class).into(new ArrayList<>());
+            List<String> courseids=pdfdb.distinct("courseid",String.class).into(new ArrayList<>());
+            List<String> types=pdfdb.distinct("type",String.class).into(new ArrayList<>());
+            List<String> terms=pdfdb.distinct("term",String.class).into(new ArrayList<>());
+            List<String> program=pdfdb.distinct("program",String.class).into(new ArrayList<>());
+            List<String> sems=pdfdb.distinct("sem",String.class).into(new ArrayList<>());
+
+            master_response.append("courses",coursenames);
+            master_response.append("courseids",courseids);
+            master_response.append("types",types);
+            master_response.append("terms",terms);
+            master_response.append("program",program);
+            master_response.append("sems",sems);
+
+            Document userDoc = usersdb.find(Filters.eq("email", email))
+                    .projection(Projections.include("recents"))
+                    .first();
+            List<ObjectId> recents= userDoc.getList("recents",ObjectId.class);
+            JsonArray recentaccess=new JsonArray();
+            for(ObjectId id:recents){
+                for( Document docs : pdfdb.find(Filters.eq("fileid",id))){
+                    JsonObject json = new JsonObject();
+
+                    ObjectId obid = docs.getObjectId("_id");
+                    json.put("_id", obid.toHexString());
+
+                    for (String key : docs.keySet()) {
+                        if (!key.equals("_id") && !key.equals("fileid")) {
+                            json.put(key, docs.get(key));
+                        }
+                    }
+
+                    ObjectId fileId = docs.getObjectId("fileid");
+                    json.put("fileid", fileId.toHexString());
+
+                    recentaccess.add(json);
+
+                }
+
+
+            }
+
+            master_response.append("recents",recentaccess);
+
+            JsonObject job= new JsonObject(master_response);
+            ctx.response().end(job.encodePrettily());
+
+        }
+    }
 
 
     public Boolean JWTauthguest(RoutingContext ctx){
