@@ -191,7 +191,7 @@ public class AWSEmail {
             MimeMessage message = new MimeMessage(session);
             message.setFrom(new InternetAddress("qvaultkristujayanti@gmail.com"));
             message.setRecipients(jakarta.mail.Message.RecipientType.TO, InternetAddress.parse(email));
-            message.setSubject("Your Sign-Up OTP");
+            message.setSubject("Your Request Status has been Updated!");
 
 
             MimeMultipart multipart = new MimeMultipart("related");
