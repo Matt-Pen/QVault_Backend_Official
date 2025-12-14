@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <style>
+        body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+        img { border: 0; outline: none; text-decoration: none; -ms-interpolation-mode: bicubic; }
+        table { border-collapse: collapse; mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+        @media only screen and (max-width: 600px) {
+            .container { width: 100% !important; }
+            .logo { width: auto !important; height: auto !important; }
+        }
+    </style>
+</head>
+
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background-color: #f5f5f5;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color: #f5f5f5; padding: 40px 20px;">
+    <tr>
+        <td align="center">
+
+            <!-- Main Container -->
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" class="container"
+                   style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
+
+                <!-- Header -->
+                <tr>
+                    <td style="background: #ffffff; padding: 0px; text-align: center;">
+                        <img src="{{logo}}" alt="Qvault" width="auto" height="80%" class="logo" style="max-width: 100%; display: block; margin: 0 auto;">
+                    </td>
+                </tr>
+
+                <!-- Content -->
+                <tr>
+                    <td style="padding: 40px;">
+
+                        <h1 style="margin: 0 0 20px 0; font-size: 26px; font-weight: 600; color: #1a1a1a; text-align: center;">
+                            Question Paper Request Status
+                        </h1>
+
+                        <p style="margin: 0 0 20px 0; font-size: 16px; color: #4a4a4a;">
+                            Hello <strong>{{studentName}}</strong>,
+                        </p>
+
+                        <p style="margin: 0 0 30px 0; font-size: 16px; color: #4a4a4a; line-height: 1.6;">
+                            This email is to inform you about the status of your request for a question paper on <strong>QVault</strong>.
+                        </p>
+
+                        <!-- Status Box -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                               style="background-color:#dae3e6; border-left: 5px solid blue; border-radius: 6px; margin-bottom: 30px;">
+                            <tr>
+                                <td style="padding: 18px;">
+                                    <p style="margin: 0; font-size: 16px; font-weight: 600; color: black;">
+                                        Request Status: <span style="color:{{statuscolor}}">{{requeststatus}}</span>
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Request Details -->
+                        <h3 style="margin: 0 0 15px 0; font-size: 18px; color: #1a1a1a;">
+                            Request Details
+                        </h3>
+
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                               style="font-size: 14px; color: #4a4a4a; line-height: 1.8; margin-bottom: 30px;">
+                            <tr>
+                                <td><strong>Course Name:</strong></td>
+                                <td>{{courseName}}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Course ID:</strong></td>
+                                <td>{{courseId}}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Academic Year:</strong></td>
+                                <td>{{year}}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Semester:</strong></td>
+                                <td>{{semester}}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Term:</strong></td>
+                                <td>{{term}}</td>
+                            </tr>
+                        </table>
+
+                        <!-- Optional Remarks -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"
+                               style="background-color: #f8f9fa; border-left: 4px solid #6c757d; border-radius: 6px; margin-bottom: 30px;">
+                            <tr>
+                                <td style="padding: 15px 20px;">
+                                    <p style="margin: 0; font-size: 14px; color: #495057;">
+                                        <strong>Remarks:</strong> {{remarks}}
+                                    </p>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <p style="margin: 0; font-size: 14px; color: #6b6b6b;">
+                            If you have any questions or need clarification, feel free to contact the QVault support team.
+                        </p>
+
+                        <p style="margin: 25px 0 0 0; font-size: 12px; color: #999999;">
+                            © 2025 Qvault Inc. All rights reserved.
+                        </p>
+
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td style="background-color: #f8f9fa; padding: 25px; text-align: center; border-top: 1px solid #e9ecef;">
+                        <p style="margin: 0; font-size: 14px; color: #6b6b6b;">
+                            Regards,<br>
+                            <strong style="color: #1a1a1a;">The Qvault Team</strong>
+                        </p>
+                    </td>
+                </tr>
+
+            </table>
+
+        </td>
+    </tr>
+</table>
+</body>
+</html>

@@ -64,6 +64,7 @@ public class SampleService extends AbstractVerticle {
     MongoCollection<Document> usersdb = database.getCollection("Users");
     MongoCollection<Document> wishdb = database.getCollection("wishlist");
     MongoCollection<Document> pdfdb = database.getCollection("QuestionPapers");
+    MongoCollection<Document> reqdb = database.getCollection("Requests");
 
 
     public void usersignup(RoutingContext ctx) {
@@ -90,9 +91,10 @@ public class SampleService extends AbstractVerticle {
                     if (email.matches(".*\\d.*") && email.contains("@kristujayanti.com")) {
                         String role = "Guest";
                         String designation = "Student";
+                        String rollno = email.substring(0, email.indexOf('@'));
                         String hashpass = hashPassword(newpass);
                         System.out.println(hashpass);
-                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation", designation);
+                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation", designation).append("rollno",rollno);
                         InsertOneResult insres = usersdb.insertOne(insdoc);
                         if (insres.wasAcknowledged()) {
                             status = "success";
@@ -105,7 +107,8 @@ public class SampleService extends AbstractVerticle {
                         String designation = "Faculty";
                         String hashpass = hashPassword(newpass);
                         System.out.println(hashpass);
-                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation", designation);
+                        String rollno = email.substring(0, email.indexOf('@'));
+                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation", designation).append("rollno",rollno);
                         InsertOneResult insres = usersdb.insertOne(insdoc);
                         if (insres.wasAcknowledged()) {
                             status = "success";
@@ -616,32 +619,150 @@ public class SampleService extends AbstractVerticle {
             List<ObjectId> recents= userDoc.getList("recents",ObjectId.class);
             JsonArray recentaccess=new JsonArray();
             for(ObjectId id:recents){
-                for( Document docs : pdfdb.find(Filters.eq("fileid",id))){
-                    JsonObject json = new JsonObject();
+                Document docs = pdfdb.find(Filters.eq("fileid",id)).first();
+                JsonObject json = new JsonObject();
 
-                    ObjectId obid = docs.getObjectId("_id");
-                    json.put("_id", obid.toHexString());
+                ObjectId obid = docs.getObjectId("_id");
+                json.put("_id", obid.toHexString());
 
-                    for (String key : docs.keySet()) {
-                        if (!key.equals("_id") && !key.equals("fileid")) {
-                            json.put(key, docs.get(key));
-                        }
+                for (String key : docs.keySet()) {
+                    if (!key.equals("_id") && !key.equals("fileid")) {
+                        json.put(key, docs.get(key));
                     }
-
-                    ObjectId fileId = docs.getObjectId("fileid");
-                    json.put("fileid", fileId.toHexString());
-
-                    recentaccess.add(json);
-
                 }
+                ObjectId fileId = docs.getObjectId("fileid");
+                json.put("fileid", fileId.toHexString());
+
+                recentaccess.add(json);
 
 
             }
-
             master_response.append("recents",recentaccess);
 
             JsonObject job= new JsonObject(master_response);
             ctx.response().end(job.encodePrettily());
+        }
+    }
+
+
+    public void requestPaper(RoutingContext ctx){
+        ctx.response().setChunked(true);
+        if(JWTauthguest(ctx)){
+            String auth = ctx.request().getHeader("Authorization");
+            String token = auth.replace("Bearer ", "");
+            String email = jtil.extractEmail(token);
+            JsonObject job = new JsonObject();
+
+            JsonObject body = ctx.body().asJsonObject();
+            String uname=body.getString("name");
+            String course=body.getString("course");
+            String crscode=body.getString("code");
+            String year=body.getString("year");
+            String sem=body.getString("sem");
+            String term=body.getString("term");
+            String details=body.getString("details");
+            String rollno = email.substring(0, email.indexOf('@'));
+            String reqstatus="pending";
+
+            Document doc= new Document();
+            doc.append("user",uname)
+                    .append("rollno",rollno)
+                    .append("email",email)
+                    .append("course",course)
+                    .append("courseid",crscode)
+                    .append("year",year)
+                    .append("sem",sem)
+                    .append("term",term)
+                    .append("status",reqstatus);
+
+            if(details!=null){
+                doc.append("details",details);
+            }
+            InsertOneResult ins=reqdb.insertOne(doc);
+
+            if (ins.wasAcknowledged()){
+                job.put("message","success");
+                Document stats= reqdb.find(Filters.eq("stats","stats")).first();
+
+//                    String  pend= stats.getString("pending");
+//                    int pending = Integer.parseInt(pend);
+//                    pending+=1;
+                int pending=stats.getInteger("pending");
+                pending+=1;
+
+                Bson update=Updates.set("pending",pending);
+                UpdateResult res=reqdb.updateOne(Filters.eq("stats","stats"),update);
+                System.out.println("Matched: " + res.getMatchedCount());
+                System.out.println("Modified: " + res.getModifiedCount());
+            }else{
+                job.put("message","failed");
+            }
+            ctx.response().end(job.encode());
+
+        }
+    }
+
+    public void requestpaperstatus(RoutingContext ctx) {
+        ctx.response().setChunked(true);
+        if (JWTauthguest(ctx)) {
+            JsonObject body = ctx.body().asJsonObject();
+            ObjectId id = new ObjectId(body.getString("id"));
+            String status = body.getString("status");
+            Document items = new Document();
+            Document reqinfo = reqdb.find(Filters.eq("_id", id)).first();
+            JsonObject job= new JsonObject();
+
+
+            String remarks = reqinfo.getString("details");
+            if (remarks == null || remarks.isEmpty()) {
+                remarks = "NONE";
+            }
+            String requestStatus;
+            String statusColor;
+            if ("approve".equals(status)) {
+                requestStatus = "Approved";
+                statusColor = "#3ccb34";
+            } else if ("rejected".equals(status)) {
+                requestStatus = "Rejected";
+                statusColor = "#ff1818";
+            } else {
+                ctx.response().setStatusCode(400).end("Invalid status");
+                return;
+            }
+
+
+            items.append("studentName", reqinfo.getString("user"))
+                .append("requeststatus", requestStatus)
+                .append("statuscolor", statusColor)
+                .append("courseName", reqinfo.getString("course"))
+                .append("courseId", reqinfo.getString("courseid"))
+                .append("year", reqinfo.getString("year"))
+                .append("semester", reqinfo.getString("sem"))
+                .append("term", reqinfo.getString("term"))
+                .append("remarks", remarks);
+
+            Document stats= reqdb.find(Filters.eq("stats","stats")).first();
+            int approve= stats.getInteger("approved");
+            approve+=1;
+
+            int pending=stats.getInteger("pending");
+            pending-=1;
+
+            Bson update=Updates.combine(Updates.set("pending",pending),Updates.set("approved",approve));
+            UpdateResult res1=reqdb.updateOne(Filters.eq("stats","stats"),update);
+
+            DeleteResult res=reqdb.deleteOne(Filters.eq("_id",id));
+
+            if(res.wasAcknowledged() && res1.wasAcknowledged()){
+                ses.sendrequeststatus(reqinfo.getString("email"),items);
+                job.put("message","success");
+                ctx.response().end(job.encode());
+            }else{
+                job.put("message","failed to delete or update");
+                ctx.response().end(job.encode());
+            }
+
+
 
         }
     }
