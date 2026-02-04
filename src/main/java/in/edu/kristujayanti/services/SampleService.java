@@ -36,6 +36,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.sql.SQLOutput;
+import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -43,8 +44,17 @@ import java.util.Properties;
 import java.util.Random;
 
 import io.vertx.core.AbstractVerticle;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.ses.model.SendEmailRequest;
 
+import static in.edu.kristujayanti.handlers.SampleHandler.presigner;
 
 
 public class SampleService extends AbstractVerticle {
@@ -527,8 +537,94 @@ public class SampleService extends AbstractVerticle {
             }
 
         }
-
 }
+
+    public void getpdfbyid3(RoutingContext ctx) {
+
+        if (JWTauthguest(ctx)) {
+
+            String auth = ctx.request().getHeader("Authorization");
+            String token = auth.replace("Bearer ", "");
+            String email = jtil.extractEmail(token);
+
+            // fetch user
+            Document matchdoc = usersdb.find(Filters.eq("email", email)).first();
+
+            JsonObject body = ctx.body().asJsonObject();
+            ObjectId pdfid = new ObjectId(body.getString("fileid"));
+
+            try {
+                // 🔹 fetch paper metadata
+                Document paperDoc = pdfdb.find(Filters.eq("_id", pdfid)).first();
+
+                if (paperDoc == null) {
+                    ctx.response().setStatusCode(404)
+                            .end(new JsonObject().put("message", "Paper not found").encode());
+                    return;
+                }
+
+                String bucket = paperDoc.getString("bucket");
+                String objectKey = paperDoc.getString("objectKey");
+
+                // 🔹 build presigned URL
+                GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(objectKey)
+                        .build();
+
+                GetObjectPresignRequest presignRequest =
+                        GetObjectPresignRequest.builder()
+                                .signatureDuration(Duration.ofMinutes(10))
+                                .getObjectRequest(getObjectRequest)
+                                .build();
+
+                PresignedGetObjectRequest presignedRequest =
+                        presigner.presignGetObject(presignRequest);
+
+                String presignedUrl = presignedRequest.url().toString();
+
+                // 🔹 send URL to frontend
+                JsonObject response = new JsonObject()
+                        .put("url", presignedUrl);
+
+                ctx.response()
+                        .putHeader("Content-Type", "application/json")
+                        .end(response.encode());
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                ctx.response().setStatusCode(500)
+                        .end(new JsonObject().put("message", "Pdf View Failed").encode());
+                return;
+            }
+
+
+
+            List<ObjectId> recents = matchdoc.getList("recents", ObjectId.class);
+
+            if (recents == null) {
+                List<ObjectId> recents2 = new ArrayList<>();
+                recents2.add(pdfid);
+                usersdb.updateOne(
+                        Filters.eq("email", email),
+                        Updates.set("recents", recents2)
+                );
+            } else {
+                recents.remove(pdfid);
+                recents.add(0, pdfid);
+
+                if (recents.size() > 8) {
+                    recents.remove(recents.size() - 1);
+                }
+
+                usersdb.updateOne(
+                        Filters.eq("email", email),
+                        Updates.set("recents", recents)
+                );
+            }
+        }
+    }
+
 
     public void searchfilter(RoutingContext ctx) {
         if (JWTauthguest(ctx)) {
@@ -618,24 +714,25 @@ public class SampleService extends AbstractVerticle {
                     .first();
             List<ObjectId> recents= userDoc.getList("recents",ObjectId.class);
             JsonArray recentaccess=new JsonArray();
-            for(ObjectId id:recents){
-                Document docs = pdfdb.find(Filters.eq("fileid",id)).first();
-                JsonObject json = new JsonObject();
+            if(!recents.isEmpty()) {
+                for (ObjectId id : recents) {
+                    Document docs = pdfdb.find(Filters.eq("_id", id)).first();
+                    JsonObject json = new JsonObject();
 
-                ObjectId obid = docs.getObjectId("_id");
-                json.put("_id", obid.toHexString());
+                    ObjectId obid = docs.getObjectId("_id");
+                    json.put("_id", obid.toHexString());
 
-                for (String key : docs.keySet()) {
-                    if (!key.equals("_id") && !key.equals("fileid")) {
-                        json.put(key, docs.get(key));
+                    for (String key : docs.keySet()) {
+                        if (!key.equals("_id")) {
+                            json.put(key, docs.get(key));
+                        }
                     }
+
+
+                    recentaccess.add(json);
+
+
                 }
-                ObjectId fileId = docs.getObjectId("fileid");
-                json.put("fileid", fileId.toHexString());
-
-                recentaccess.add(json);
-
-
             }
             master_response.append("recents",recentaccess);
 
@@ -765,6 +862,110 @@ public class SampleService extends AbstractVerticle {
 
 
         }
+    }
+
+
+    public void  handleuploadS3(RoutingContext ctx){
+        ctx.response().setChunked(true);
+
+        if (JWTauthadmin(ctx)) {
+            System.out.println("role and user valid valid succes");
+
+            String name = ctx.request().getFormAttribute("course");
+            String courseid = ctx.request().getFormAttribute("id");
+            String department = ctx.request().getFormAttribute("department");
+            String courseName = ctx.request().getFormAttribute("program");
+            String examTerm = ctx.request().getFormAttribute("term");
+            String year = ctx.request().getFormAttribute("year");
+            String type = ctx.request().getFormAttribute("type");
+            String sem = ctx.request().getFormAttribute("sem");
+
+            JsonObject job = new JsonObject();
+
+            try {
+
+                // -------- S3 CLIENT (reusable – ideally move to constructor) --------
+                S3Client s3Client = S3Client.builder()
+                        .region(Region.AP_SOUTH_1)
+                        .credentialsProvider(DefaultCredentialsProvider.create())
+                        .build();
+                // --------------------------------------------------------------------
+
+                String objectKey = null;
+
+                for (FileUpload upload : ctx.fileUploads()) {
+                    try {
+                        if ("application/pdf".equals(upload.contentType())) {
+
+                            Path filePath = Paths.get(upload.uploadedFileName());
+
+                            // SAME key = automatic replace
+                            objectKey = courseid + "/"
+                                            + department + "/"
+                                            + sem + "/"
+                                            + year + "/"
+                                            + upload.fileName();
+
+                            try (InputStream pdfStream = Files.newInputStream(filePath)) {
+
+                                PutObjectRequest putRequest = PutObjectRequest.builder()
+                                        .bucket("qvault-question-papers")
+                                        .key(objectKey)
+                                        .contentType("application/pdf")
+                                        .build();
+
+                                s3Client.putObject(
+                                        putRequest,
+                                        RequestBody.fromInputStream(pdfStream, Files.size(filePath))
+                                );
+                            }
+
+                        } else {
+                            System.out.println("Skipping non-PDF file: " + upload.fileName());
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                // ---------- MongoDB metadata ----------
+                Document doc = new Document();
+                doc.append("course", name)
+                        .append("courseid", courseid)
+                        .append("department", department)
+                        .append("program", courseName)
+                        .append("sem", sem)
+                        .append("type", type)
+                        .append("term", examTerm)
+                        .append("year", year)
+                        .append("bucket", "qvault-question-papers")
+                        .append("objectKey", objectKey);
+
+                // ---------- Temp file cleanup ----------
+                for (FileUpload upload : ctx.fileUploads()) {
+                    try {
+                        Files.deleteIfExists(Paths.get(upload.uploadedFileName()));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                InsertOneResult ins = pdfdb.insertOne(doc);
+                if (ins.wasAcknowledged()) {
+                    job.put("message", "success");
+                } else {
+                    job.put("message", "fail");
+                }
+
+                ctx.response().end(job.encode());
+                System.out.println("uploaded maybe");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                ctx.response().setStatusCode(500).end("Failed to upload PDF to S3");
+            }
+        }
+
     }
 
 

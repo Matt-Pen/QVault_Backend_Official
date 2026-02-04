@@ -8,8 +8,11 @@ import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 public class SampleHandler extends AbstractVerticle {
+    public static S3Presigner presigner;
     public void start(Promise<Void> startPromise) {
         HttpServer server = vertx.createHttpServer();
         Vertx vertx = Vertx.vertx();
@@ -34,9 +37,14 @@ public class SampleHandler extends AbstractVerticle {
         router.post("/qvault/requestpaper").handler(smp::requestPaper);
         router.post("/qvault/requeststatusupdate").handler(smp::requestpaperstatus);
 
+        router.post("/qvault/uploadQPS3").handler(smp::handleuploadS3);
+        router.get("/qvault/getpdfS3").handler(smp::getpdfbyid3);
 
 
 
+        presigner = S3Presigner.builder()
+                .region(Region.AP_SOUTH_1) // change if needed
+                .build();
 
 
         Future<HttpServer> fut=server.requestHandler(router).listen(8080);
