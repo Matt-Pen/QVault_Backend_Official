@@ -8,7 +8,9 @@ import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpServer;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 public class SampleHandler extends AbstractVerticle {
@@ -18,7 +20,13 @@ public class SampleHandler extends AbstractVerticle {
         Vertx vertx = Vertx.vertx();
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
-        SampleService smp= new SampleService();
+
+        S3Client s3Client = S3Client.builder()
+                .region(Region.AP_SOUTH_1)
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+
+        SampleService smp = new SampleService(s3Client);
 
 
         router.post("/qvault/usersign").handler(smp::usersignup);
@@ -39,7 +47,11 @@ public class SampleHandler extends AbstractVerticle {
 
         router.post("/qvault/uploadQPS3").handler(smp::handleuploadS3);
         router.get("/qvault/getpdfS3").handler(smp::getpdfbyid3);
+        router.put("/qvault/handleupdateS3").handler(smp::handleupdateS3);
 
+        router.post("/qvault/addFavs").handler(smp::addtoFavorites);
+        router.put("/qvault/deleteFavs").handler(smp::deletefromFavorites);
+        router.get("/qvault/showFavs").handler(smp::showFavorites);
 
 
         presigner = S3Presigner.builder()
