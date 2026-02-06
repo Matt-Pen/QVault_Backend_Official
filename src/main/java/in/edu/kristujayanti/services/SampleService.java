@@ -21,8 +21,6 @@ import io.vertx.core.json.JsonObject;
 import io.vertx.ext.web.FileUpload;
 import io.vertx.ext.web.RoutingContext;
 import jakarta.mail.*;
-import jakarta.mail.internet.InternetAddress;
-import jakarta.mail.internet.MimeMessage;
 import org.bson.Document;
 import org.bson.conversions.Bson;
 import org.bson.types.ObjectId;
@@ -35,7 +33,6 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.SQLOutput;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -89,7 +86,7 @@ public class SampleService extends AbstractVerticle {
         String otp = body.getString("otp");
         String newpass = body.getString("password");
         String status = "";
-
+        System.out.println("in user Sign");
         Document docs = usersdb.find().filter(Filters.eq("email", email)).first();
         if (docs != null) {
             status = "exist";
@@ -99,7 +96,6 @@ public class SampleService extends AbstractVerticle {
                 System.out.println(send_otp);
                 setotp(send_otp, email);
                 ses.sendawssignup(send_otp, email);
-//                sendOTPmail(send_otp, email);
                 status = "OTP Sent";
             } else if (email != null && otp != null && newpass != null) {
                 String sent_otp = getoken(otp);
@@ -178,7 +174,7 @@ public class SampleService extends AbstractVerticle {
                 setoken("jwt:ref" + email, reftoken);
                 System.out.println(getoken("jwt:ref" + email));
             } else {
-                status = "invalid passoword";
+                status = "invalid password";
             }
 
         }

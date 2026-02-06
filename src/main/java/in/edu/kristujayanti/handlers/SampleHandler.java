@@ -5,9 +5,11 @@ import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServer;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.CorsHandler;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -20,6 +22,15 @@ public class SampleHandler extends AbstractVerticle {
         Vertx vertx = Vertx.vertx();
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
+
+        router.route().handler(CorsHandler.create("*")
+                .allowedMethod(HttpMethod.OPTIONS)
+                .allowedMethod(HttpMethod.POST)
+                .allowedMethod(HttpMethod.GET)
+                .allowedMethod(HttpMethod.DELETE)
+                .allowedMethod(HttpMethod.PATCH)
+                .allowedHeader("Content-Type")
+                .allowedHeader("Authorization"));
 
         S3Client s3Client = S3Client.builder()
                 .region(Region.AP_SOUTH_1)
