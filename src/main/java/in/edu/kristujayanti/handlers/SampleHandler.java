@@ -59,6 +59,7 @@ public class SampleHandler extends AbstractVerticle {
         router.post("/qvault/uploadQPS3").handler(smp::handleuploadS3);
         router.get("/qvault/getpdfS3").handler(smp::getpdfbyid3);
         router.put("/qvault/handleupdateS3").handler(smp::handleupdateS3);
+        router.delete("/qvault/handledeleteS3").handler(smp::handledeleteS3);
 
         router.post("/qvault/addFavs").handler(smp::addtoFavorites);
         router.put("/qvault/deleteFavs").handler(smp::deletefromFavorites);

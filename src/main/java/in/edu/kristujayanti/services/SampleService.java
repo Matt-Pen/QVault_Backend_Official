@@ -1121,6 +1121,58 @@ public class SampleService extends AbstractVerticle {
         ctx.response().setStatusCode(400).end("Unsupported Content Type");
     }
 
+    public void handledeleteS3(RoutingContext ctx) {
+        ctx.response().setChunked(true);
+        if(JWTauthadmin(ctx)){
+            JsonObject body = ctx.body().asJsonObject();
+            ObjectId id = new ObjectId(body.getString("id"));
+            Bson filter = Filters.eq("_id", id);
+
+            Document paper = pdfdb.find(filter).first();
+            if (paper == null) {
+                ctx.response().setStatusCode(404)
+                        .end(new JsonObject().put("message", "Record not found").encode());
+                return;
+            }
+
+
+            String bucket = paper.getString("bucket");
+            String oldObjectKey = paper.getString("objectKey");
+
+            if (bucket == null || oldObjectKey == null) {
+                ctx.response().setStatusCode(500)
+                        .end(new JsonObject().put("message", "Invalid S3 metadata").encode());
+                return;
+            }
+
+
+            try{
+                s3.deleteObject(DeleteObjectRequest.builder()
+                        .bucket(bucket)
+                        .key(oldObjectKey)
+                        .build());
+
+            }catch(Exception e){
+                e.printStackTrace();
+                ctx.response().setStatusCode(500)
+                        .end(new JsonObject().put("message", "S3 Delete Failed").encode());
+                return;
+            }
+
+            DeleteResult del=pdfdb.deleteOne(filter);
+
+            if(del.getDeletedCount()>0){
+                ctx.response().setStatusCode(200)
+                        .end(new JsonObject().put("message", "success").encode());
+            }else{
+                ctx.response().setStatusCode(400)
+                        .end(new JsonObject().put("message", "failed").encode());
+            }
+
+
+        }
+    }
+
 
     public void addtoFavorites(RoutingContext ctx){
         ctx.response().setChunked(true);
