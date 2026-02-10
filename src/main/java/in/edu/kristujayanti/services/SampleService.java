@@ -2,10 +2,7 @@ package in.edu.kristujayanti.services;
 import com.mongodb.client.*;
 import com.mongodb.client.gridfs.GridFSBucket;
 import com.mongodb.client.gridfs.GridFSBuckets;
-import com.mongodb.client.model.Filters;
-import com.mongodb.client.model.Projections;
-import com.mongodb.client.model.UpdateOptions;
-import com.mongodb.client.model.Updates;
+import com.mongodb.client.model.*;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.InsertOneResult;
 import com.mongodb.client.result.UpdateResult;
@@ -35,10 +32,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Properties;
-import java.util.Random;
+import java.util.*;
 
 import io.vertx.core.AbstractVerticle;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
@@ -115,7 +109,7 @@ public class SampleService extends AbstractVerticle {
                             deltoken(otp);
                         }
                     } else if (email.contains("@kristujayanti.com")) {
-                        String role = "Guest";
+                        String role = "Admin";
                         String designation = "Faculty";
                         String hashpass = hashPassword(newpass);
                         System.out.println(hashpass);
@@ -151,7 +145,10 @@ public class SampleService extends AbstractVerticle {
         String acctoken = "";
         String reftoken = "";
         String status = "";
+        String desig="";
+        String role="";
 
+        System.out.println("In Login");
         String token2 = jedis.get("jwt:ref" + email);
         if (token2 != null) {
             deltoken("jwt:acc" + email);
@@ -172,14 +169,16 @@ public class SampleService extends AbstractVerticle {
                 acctoken = jtil.generateAccessToken(email, 30, dbrole);
                 reftoken = jtil.generateRefreshToken(email, 7, dbrole);
                 setoken("jwt:ref" + email, reftoken);
+                desig=matchdoc.getString("designation");
+                role=matchdoc.getString("role");
                 System.out.println(getoken("jwt:ref" + email));
             } else {
                 status = "invalid password";
             }
 
         }
-        JsonObject job = new JsonObject().put("message", status).put("access token", acctoken).put("refresh token", reftoken);
-        ctx.response().end(job.encode());
+        JsonObject job = new JsonObject().put("message", status).put("access token", acctoken).put("refresh token", reftoken).put("designation",desig).put("role",role);
+        ctx.response().end(job.encodePrettily());
     }
 
     public void resetpassword(RoutingContext ctx) {
@@ -708,8 +707,25 @@ public class SampleService extends AbstractVerticle {
             master_response.append("sems",sems);
 
             Document userDoc = usersdb.find(Filters.eq("email", email))
-                    .projection(Projections.include("recents"))
+                    .projection(Projections.include("recents","favourites"))
                     .first();
+
+            List<Document> randomPapers = pdfdb.aggregate(
+                    Arrays.asList(
+                            Aggregates.sample(3)
+                    )
+            ).into(new ArrayList<>());
+
+            JsonArray papersArray = new JsonArray();
+
+            master_response.put("recommendedPapers", papersArray);
+
+            for (Document doc : randomPapers    ) {
+                JsonObject paperJson = new JsonObject(doc.toJson());
+                papersArray.add(paperJson);
+            }
+
+
 
             List<ObjectId> recents= userDoc.getList("recents",ObjectId.class);
             JsonArray recentaccess=new JsonArray();
@@ -731,26 +747,26 @@ public class SampleService extends AbstractVerticle {
             }
             master_response.append("recents",recentaccess);
 
-            List<ObjectId> favs= userDoc.getList("favourites",ObjectId.class);
-            JsonArray favpapers=new JsonArray();
-            if(!favs.isEmpty()) {
-                for (ObjectId id : favs) {
-                    Document docs = pdfdb.find(Filters.eq("_id", id)).first();
-                    JsonObject json = new JsonObject();
-
-                    ObjectId obid = docs.getObjectId("_id");
-                    json.put("_id", obid.toHexString());
-
-                    for (String key : docs.keySet()) {
-                        if (!(key.equals("_id") || key.equals("bucket") || key.equals("objectKey"))) {
-                            json.put(key, docs.get(key));
-                        }
-                    }
-                    favpapers.add(json);
-                }
-            }
-
-            master_response.append("favourites",favpapers);
+//            List<ObjectId> favs= userDoc.getList("favourites",ObjectId.class);
+//            JsonArray favpapers=new JsonArray();
+//            if(!favs.isEmpty()) {
+//                for (ObjectId id : favs) {
+//                    Document docs = pdfdb.find(Filters.eq("_id", id)).first();
+//                    JsonObject json = new JsonObject();
+//
+//                    ObjectId obid = docs.getObjectId("_id");
+//                    json.put("_id", obid.toHexString());
+//
+//                    for (String key : docs.keySet()) {
+//                        if (!(key.equals("_id") || key.equals("bucket") || key.equals("objectKey"))) {
+//                            json.put(key, docs.get(key));
+//                        }
+//                    }
+//                    favpapers.add(json);
+//                }
+//            }
+//
+//            master_response.append("favourites",favpapers);
 
             JsonObject job= new JsonObject(master_response);
             ctx.response().end(job.encodePrettily());
