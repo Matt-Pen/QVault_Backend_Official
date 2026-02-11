@@ -712,7 +712,7 @@ public class SampleService extends AbstractVerticle {
 
             List<Document> randomPapers = pdfdb.aggregate(
                     Arrays.asList(
-                            Aggregates.sample(3)
+                            Aggregates.sample(6)
                     )
             ).into(new ArrayList<>());
 
