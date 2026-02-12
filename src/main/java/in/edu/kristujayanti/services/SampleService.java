@@ -697,14 +697,14 @@ public class SampleService extends AbstractVerticle {
             List<String> types=pdfdb.distinct("type",String.class).into(new ArrayList<>());
             List<String> terms=pdfdb.distinct("term",String.class).into(new ArrayList<>());
             List<String> program=pdfdb.distinct("program",String.class).into(new ArrayList<>());
-            List<String> sems=pdfdb.distinct("sem",String.class).into(new ArrayList<>());
+            List<String> year =pdfdb.distinct("year",String.class).into(new ArrayList<>());
 
             master_response.append("courses",coursenames);
             master_response.append("courseids",courseids);
             master_response.append("types",types);
             master_response.append("terms",terms);
             master_response.append("program",program);
-            master_response.append("sems",sems);
+            master_response.append("year",year);
 
             Document userDoc = usersdb.find(Filters.eq("email", email))
                     .projection(Projections.include("recents","favourites"))
@@ -721,11 +721,19 @@ public class SampleService extends AbstractVerticle {
             master_response.put("recommendedPapers", papersArray);
 
             for (Document doc : randomPapers    ) {
-                JsonObject paperJson = new JsonObject(doc.toJson());
+                JsonObject paperJson = new JsonObject();
+
+                ObjectId obid = doc.getObjectId("_id");
+                paperJson.put("_id", obid.toHexString());
+
+                for (String key : doc.keySet()) {
+                    if (!key.equals("_id")) {
+                        paperJson.put(key, doc.get(key));
+                    }
+                }
                 papersArray.add(paperJson);
             }
-
-
+            master_response.put("recommendedPapers", papersArray);
 
             List<ObjectId> recents= userDoc.getList("recents",ObjectId.class);
             JsonArray recentaccess=new JsonArray();
@@ -751,17 +759,17 @@ public class SampleService extends AbstractVerticle {
 //            JsonArray favpapers=new JsonArray();
 //            if(!favs.isEmpty()) {
 //                for (ObjectId id : favs) {
-//                    Document docs = pdfdb.find(Filters.eq("_id", id)).first();
+//                    Document docs = pdfdb.find(Filters.eq("_id", id)).projection(Projections.include("_id")).first();
 //                    JsonObject json = new JsonObject();
 //
 //                    ObjectId obid = docs.getObjectId("_id");
 //                    json.put("_id", obid.toHexString());
 //
-//                    for (String key : docs.keySet()) {
-//                        if (!(key.equals("_id") || key.equals("bucket") || key.equals("objectKey"))) {
-//                            json.put(key, docs.get(key));
-//                        }
-//                    }
+////                    for (String key : docs.keySet()) {
+////                        if (!(key.equals("_id") || key.equals("bucket") || key.equals("objectKey"))) {
+////                            json.put(key, docs.get(key));
+////                        }
+////                    }
 //                    favpapers.add(json);
 //                }
 //            }
