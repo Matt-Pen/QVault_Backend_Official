@@ -629,7 +629,8 @@ public class SampleService extends AbstractVerticle {
 
     public void searchfilter(RoutingContext ctx) {
         if (JWTauthguest(ctx)) {
-            int perpage=3;
+            System.out.println("In Search Filter");
+            int perpage=6;
             JsonObject body = ctx.body().asJsonObject();
             String course=body.getString("course");
             String crscode=body.getString("code");
@@ -668,11 +669,13 @@ public class SampleService extends AbstractVerticle {
 
             }
             if(!jarr.isEmpty()) {
+                System.out.println("Search Filter response sent.");
                 ctx.response()
                         .putHeader("Content-Type", "application/json")
                         .end(jarr.encodePrettily());
             }
             else{
+                System.out.println("Search filter response Failed.");
                 ctx.response()
                         .putHeader("Content-Type", "application/json")
                         .end(new JsonObject().put("page", "end").encode());
@@ -775,8 +778,9 @@ public class SampleService extends AbstractVerticle {
 //            }
 //
 //            master_response.append("favourites",favpapers);
-
+            System.out.println("student home response sent.");
             JsonObject job= new JsonObject(master_response);
+
             ctx.response().end(job.encodePrettily());
         }
     }
@@ -1194,6 +1198,67 @@ public class SampleService extends AbstractVerticle {
             }
 
 
+        }
+    }
+
+    public void adminhome(RoutingContext ctx){
+        ctx.response().setChunked(true);
+        if(JWTauthadmin(ctx)){
+            System.out.println("Success Admin Home stats validation.");
+
+            JsonObject master= new JsonObject();
+            Document statdoc= reqdb.find(Filters.eq("stats","stats")).first();
+
+            long count = pdfdb.countDocuments();
+            if(statdoc!=null && count!=0){
+                master.put("countpapers",count);
+                master.put("pending",statdoc.getInteger("pending").toString());
+                master.put("approved",statdoc.getInteger("approved").toString());
+                System.out.println("Admin home statr response sent.");
+                ctx.response()
+                        .putHeader("Content-Type", "application/json")
+                        .end(master.encodePrettily());
+
+            }else{
+                ctx.response().setStatusCode(400).end(new JsonObject().put("message","failed").encode());
+            }
+
+
+        }
+    }
+
+    public void  adminhomeqp(RoutingContext ctx){
+        ctx.response().setChunked(true);
+        if(JWTauthadmin(ctx)){
+            System.out.println("Success Admin Home validation.");
+            JsonObject body=ctx.body().asJsonObject();
+            int perpage=6;
+            int page=body.getInteger("page");
+
+            JsonArray jarr=new JsonArray();
+            for( Document docs : pdfdb.find().skip(page*perpage).limit(perpage)){
+                JsonObject json = new JsonObject();
+
+                ObjectId id = docs.getObjectId("_id");
+                json.put("_id", id.toHexString());
+
+                for (String key : docs.keySet()) {
+                    if (!(key.equals("_id") || key.equals("bucket") || key.equals("objectKey"))) {
+                        json.put(key, docs.get(key));
+                    }
+                }
+                jarr.add(json);
+
+            }
+            JsonObject master=new JsonObject();
+            master.put("papers",jarr);
+
+            if(!jarr.isEmpty()){
+                System.out.println("Admin home Paper response sent.");
+                ctx.response()
+                        .putHeader("Content-Type", "application/json")
+                        .end(master.encodePrettily());
+            }
         }
     }
 
