@@ -73,7 +73,6 @@ public class SampleService extends AbstractVerticle {
     MongoCollection<Document> reqdb = database.getCollection("Requests");
 
 
-
     public void usersignup(RoutingContext ctx) {
         JsonObject body = ctx.body().asJsonObject();
         String email = body.getString("email");
@@ -100,7 +99,7 @@ public class SampleService extends AbstractVerticle {
                         String rollno = email.substring(0, email.indexOf('@'));
                         String hashpass = hashPassword(newpass);
                         System.out.println(hashpass);
-                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation", designation).append("rollno",rollno).append("recents", new ArrayList<ObjectId>()).append("favourites", new ArrayList<ObjectId>());
+                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation", designation).append("rollno", rollno).append("recents", new ArrayList<ObjectId>()).append("favourites", new ArrayList<ObjectId>());
                         InsertOneResult insres = usersdb.insertOne(insdoc);
                         if (insres.wasAcknowledged()) {
                             status = "success";
@@ -114,7 +113,7 @@ public class SampleService extends AbstractVerticle {
                         String hashpass = hashPassword(newpass);
                         System.out.println(hashpass);
                         String rollno = email.substring(0, email.indexOf('@'));
-                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation", designation).append("rollno",rollno).append("recents", new ArrayList<ObjectId>()).append("favourites", new ArrayList<ObjectId>());
+                        Document insdoc = new Document("email", email).append("pass", hashpass).append("role", role).append("designation", designation).append("rollno", rollno).append("recents", new ArrayList<ObjectId>()).append("favourites", new ArrayList<ObjectId>());
                         InsertOneResult insres = usersdb.insertOne(insdoc);
                         if (insres.wasAcknowledged()) {
                             status = "success";
@@ -145,8 +144,8 @@ public class SampleService extends AbstractVerticle {
         String acctoken = "";
         String reftoken = "";
         String status = "";
-        String desig="";
-        String role="";
+        String desig = "";
+        String role = "";
 
         System.out.println("In Login");
         String token2 = jedis.get("jwt:ref" + email);
@@ -169,15 +168,15 @@ public class SampleService extends AbstractVerticle {
                 acctoken = jtil.generateAccessToken(email, 30, dbrole);
                 reftoken = jtil.generateRefreshToken(email, 7, dbrole);
                 setoken("jwt:ref" + email, reftoken);
-                desig=matchdoc.getString("designation");
-                role=matchdoc.getString("role");
+                desig = matchdoc.getString("designation");
+                role = matchdoc.getString("role");
                 System.out.println(getoken("jwt:ref" + email));
             } else {
                 status = "invalid password";
             }
 
         }
-        JsonObject job = new JsonObject().put("message", status).put("access token", acctoken).put("refresh token", reftoken).put("designation",desig).put("role",role);
+        JsonObject job = new JsonObject().put("message", status).put("access token", acctoken).put("refresh token", reftoken).put("designation", desig).put("role", role);
         ctx.response().end(job.encodePrettily());
     }
 
@@ -233,72 +232,72 @@ public class SampleService extends AbstractVerticle {
 
     public void handleupload(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        if(JWTauthadmin(ctx)){
-          System.out.println("role and user valid valid succes");
+        if (JWTauthadmin(ctx)) {
+            System.out.println("role and user valid valid succes");
 
 
-                String name = ctx.request().getFormAttribute("course");
-                String courseid = ctx.request().getFormAttribute("id");
-                String department = ctx.request().getFormAttribute("department");
-                String courseName = ctx.request().getFormAttribute("program");
-                String examTerm = ctx.request().getFormAttribute("term");
-                String year = ctx.request().getFormAttribute("year");
-                String type = ctx.request().getFormAttribute("type");
-                String sem=ctx.request().getFormAttribute("sem");
-                JsonObject job = new JsonObject();
-                ObjectId fileid = null;
+            String name = ctx.request().getFormAttribute("course");
+            String courseid = ctx.request().getFormAttribute("id");
+            String department = ctx.request().getFormAttribute("department");
+            String courseName = ctx.request().getFormAttribute("program");
+            String examTerm = ctx.request().getFormAttribute("term");
+            String year = ctx.request().getFormAttribute("year");
+            String type = ctx.request().getFormAttribute("type");
+            String sem = ctx.request().getFormAttribute("sem");
+            JsonObject job = new JsonObject();
+            ObjectId fileid = null;
 
-                try {
+            try {
 
-                    GridFSBucket gridFSBucket = GridFSBuckets.create(database);
+                GridFSBucket gridFSBucket = GridFSBuckets.create(database);
 
-                    for (FileUpload upload : ctx.fileUploads()) {
-                        try {
-                            if (upload.contentType().equals("application/pdf")) {
-                                Path filePath = Paths.get(upload.uploadedFileName());
-                                try (InputStream pdfStream = Files.newInputStream(filePath)) {
-                                    fileid = gridFSBucket.uploadFromStream(upload.fileName(), pdfStream);
+                for (FileUpload upload : ctx.fileUploads()) {
+                    try {
+                        if (upload.contentType().equals("application/pdf")) {
+                            Path filePath = Paths.get(upload.uploadedFileName());
+                            try (InputStream pdfStream = Files.newInputStream(filePath)) {
+                                fileid = gridFSBucket.uploadFromStream(upload.fileName(), pdfStream);
 
-                                }
-                            } else {
-                                System.out.println("Skipping non-PDF file: " + upload.fileName());
                             }
-                        } catch (IOException e) {
-                            e.printStackTrace();
+                        } else {
+                            System.out.println("Skipping non-PDF file: " + upload.fileName());
                         }
+                    } catch (IOException e) {
+                        e.printStackTrace();
                     }
-                    Document doc = new Document();
-                    doc.append("course", name)
-                            .append("courseid", courseid)
-                            .append("department", department)
-                            .append("program", courseName)
-                            .append("sem",sem)
-                            .append("type", type)
-                            .append("term", examTerm)
-                            .append("year", year)
-                            .append("fileid", fileid);
-
-                    for (FileUpload upload : ctx.fileUploads()) {
-                        try {
-                            Files.deleteIfExists(Paths.get(upload.uploadedFileName()));
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    InsertOneResult ins = pdfdb.insertOne(doc);
-                    if (ins.wasAcknowledged()) {
-                        job.put("message", "success");
-                    } else {
-                        job.put("message", "fail");
-                    }
-                    ctx.response().end(job.encode());
-                    System.out.println("uploaded maybe");
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    ctx.response().setStatusCode(500).end("Failed to save PDFs with GridFS");
                 }
+                Document doc = new Document();
+                doc.append("course", name)
+                        .append("courseid", courseid)
+                        .append("department", department)
+                        .append("program", courseName)
+                        .append("sem", sem)
+                        .append("type", type)
+                        .append("term", examTerm)
+                        .append("year", year)
+                        .append("fileid", fileid);
+
+                for (FileUpload upload : ctx.fileUploads()) {
+                    try {
+                        Files.deleteIfExists(Paths.get(upload.uploadedFileName()));
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                InsertOneResult ins = pdfdb.insertOne(doc);
+                if (ins.wasAcknowledged()) {
+                    job.put("message", "success");
+                } else {
+                    job.put("message", "fail");
+                }
+                ctx.response().end(job.encode());
+                System.out.println("uploaded maybe");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                ctx.response().setStatusCode(500).end("Failed to save PDFs with GridFS");
+            }
 
 
         }
@@ -314,104 +313,104 @@ public class SampleService extends AbstractVerticle {
 
     public void handleupdate(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        if(JWTauthadmin(ctx)){
-             System.out.println("role and user valid valid succes");
-                String contentType = ctx.request().getHeader("Content-Type");
-                if (contentType != null && contentType.contains("application/json")) {
-                    JsonObject body = ctx.body().asJsonObject();
-                    ObjectId id = new ObjectId(body.getString("id"));
-                    Bson filter = Filters.eq("_id", id);
-                    Bson update = Updates.combine(
-                            Updates.set("course", body.getString("course")),
-                            Updates.set("courseid", body.getString("courseid")),
-                            Updates.set("department", body.getString("department")),
-                            Updates.set("program", body.getString("program")),
-                            Updates.set("type", body.getString("type")),
-                            Updates.set("term", body.getString("term")),
-                            Updates.set("year", body.getString("year")),
-                            Updates.set("sem", body.getString("sem"))
-                    );
+        if (JWTauthadmin(ctx)) {
+            System.out.println("role and user valid valid succes");
+            String contentType = ctx.request().getHeader("Content-Type");
+            if (contentType != null && contentType.contains("application/json")) {
+                JsonObject body = ctx.body().asJsonObject();
+                ObjectId id = new ObjectId(body.getString("id"));
+                Bson filter = Filters.eq("_id", id);
+                Bson update = Updates.combine(
+                        Updates.set("course", body.getString("course")),
+                        Updates.set("courseid", body.getString("courseid")),
+                        Updates.set("department", body.getString("department")),
+                        Updates.set("program", body.getString("program")),
+                        Updates.set("type", body.getString("type")),
+                        Updates.set("term", body.getString("term")),
+                        Updates.set("year", body.getString("year")),
+                        Updates.set("sem", body.getString("sem"))
+                );
 
-                    UpdateResult result2 = pdfdb.updateOne(filter, update);
-                    if (result2.getModifiedCount() != 0) {
-                        JsonObject job = new JsonObject().put("message", "Updated successfully");
-                        ctx.response().setStatusCode(200).end(job.encode());
-                        return;
-                    } else {
-                        JsonObject job = new JsonObject().put("message", "Update Failed");
-                        ctx.response().setStatusCode(400).end(job.encode());
-                        return;
-                    }
-
-
-                } else if (contentType != null && contentType.contains("multipart/form-data")) {
-                    ObjectId id = new ObjectId(ctx.request().getFormAttribute("id"));
-                    ObjectId pdfid = new ObjectId(ctx.request().getFormAttribute("fileid"));
-
-
-                    ObjectId newpdfid = null;
-                    GridFSBucket gridFSBucket = GridFSBuckets.create(database);
-
-                    for (FileUpload upload : ctx.fileUploads()) {
-                        try {
-                            if (upload.contentType().equals("application/pdf")) {
-                                Path filePath = Paths.get(upload.uploadedFileName());
-                                try (InputStream pdfStream = Files.newInputStream(filePath)) {
-                                    newpdfid = gridFSBucket.uploadFromStream(upload.fileName(), pdfStream);
-
-                                }
-                            } else {
-                                System.out.println("Skipping non-PDF file: " + upload.fileName());
-                            }
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-
-                    if (newpdfid == null) {
-                        ctx.response().setStatusCode(400)
-                                .end(new JsonObject().put("message", "No valid PDF uploaded").encode());
-                        return;
-                    }
-                    try {
-                        gridFSBucket.delete(pdfid);
-                    } catch (Exception e) {
-                        JsonObject job = new JsonObject().put("message", "Update Failed");
-                        ctx.response().setStatusCode(400).end(job.encode());
-                        return;
-                    }
-
-
-                    Bson filter = Filters.eq("_id", id);
-                    Bson update = Updates.combine(
-                            Updates.set("course", ctx.request().getFormAttribute("course")),
-                            Updates.set("courseid", ctx.request().getFormAttribute("courseid")),
-                            Updates.set("department", ctx.request().getFormAttribute("department")),
-                            Updates.set("program", ctx.request().getFormAttribute("program")),
-                            Updates.set("type", ctx.request().getFormAttribute("type")),
-                            Updates.set("term", ctx.request().getFormAttribute("term")),
-                            Updates.set("year", ctx.request().getFormAttribute("year")),
-                            Updates.set("sem", ctx.request().getFormAttribute("sem")),
-                            Updates.set("fileid", newpdfid)
-
-                    );
-
-                    UpdateResult result2 = pdfdb.updateOne(filter, update);
-                    if (result2.getModifiedCount() != 0) {
-                        JsonObject job = new JsonObject().put("message", "Updated successfully");
-                        ctx.response().setStatusCode(200).end(job.encode());
-                        return;
-                    } else {
-                        JsonObject job = new JsonObject().put("message", "Update Failed");
-                        ctx.response().setStatusCode(400).end(job.encode());
-                        return;
-                    }
-
-
+                UpdateResult result2 = pdfdb.updateOne(filter, update);
+                if (result2.getModifiedCount() != 0) {
+                    JsonObject job = new JsonObject().put("message", "Updated successfully");
+                    ctx.response().setStatusCode(200).end(job.encode());
+                    return;
                 } else {
-                    ctx.response().setStatusCode(400).end("Unsupported Content Type.");
+                    JsonObject job = new JsonObject().put("message", "Update Failed");
+                    ctx.response().setStatusCode(400).end(job.encode());
                     return;
                 }
+
+
+            } else if (contentType != null && contentType.contains("multipart/form-data")) {
+                ObjectId id = new ObjectId(ctx.request().getFormAttribute("id"));
+                ObjectId pdfid = new ObjectId(ctx.request().getFormAttribute("fileid"));
+
+
+                ObjectId newpdfid = null;
+                GridFSBucket gridFSBucket = GridFSBuckets.create(database);
+
+                for (FileUpload upload : ctx.fileUploads()) {
+                    try {
+                        if (upload.contentType().equals("application/pdf")) {
+                            Path filePath = Paths.get(upload.uploadedFileName());
+                            try (InputStream pdfStream = Files.newInputStream(filePath)) {
+                                newpdfid = gridFSBucket.uploadFromStream(upload.fileName(), pdfStream);
+
+                            }
+                        } else {
+                            System.out.println("Skipping non-PDF file: " + upload.fileName());
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                if (newpdfid == null) {
+                    ctx.response().setStatusCode(400)
+                            .end(new JsonObject().put("message", "No valid PDF uploaded").encode());
+                    return;
+                }
+                try {
+                    gridFSBucket.delete(pdfid);
+                } catch (Exception e) {
+                    JsonObject job = new JsonObject().put("message", "Update Failed");
+                    ctx.response().setStatusCode(400).end(job.encode());
+                    return;
+                }
+
+
+                Bson filter = Filters.eq("_id", id);
+                Bson update = Updates.combine(
+                        Updates.set("course", ctx.request().getFormAttribute("course")),
+                        Updates.set("courseid", ctx.request().getFormAttribute("courseid")),
+                        Updates.set("department", ctx.request().getFormAttribute("department")),
+                        Updates.set("program", ctx.request().getFormAttribute("program")),
+                        Updates.set("type", ctx.request().getFormAttribute("type")),
+                        Updates.set("term", ctx.request().getFormAttribute("term")),
+                        Updates.set("year", ctx.request().getFormAttribute("year")),
+                        Updates.set("sem", ctx.request().getFormAttribute("sem")),
+                        Updates.set("fileid", newpdfid)
+
+                );
+
+                UpdateResult result2 = pdfdb.updateOne(filter, update);
+                if (result2.getModifiedCount() != 0) {
+                    JsonObject job = new JsonObject().put("message", "Updated successfully");
+                    ctx.response().setStatusCode(200).end(job.encode());
+                    return;
+                } else {
+                    JsonObject job = new JsonObject().put("message", "Update Failed");
+                    ctx.response().setStatusCode(400).end(job.encode());
+                    return;
+                }
+
+
+            } else {
+                ctx.response().setStatusCode(400).end("Unsupported Content Type.");
+                return;
+            }
 
 
         }
@@ -427,43 +426,43 @@ public class SampleService extends AbstractVerticle {
 
     public void deleterecord(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        if(JWTauthadmin(ctx)){
+        if (JWTauthadmin(ctx)) {
 
             System.out.println("role and user valid valid succes");
-                JsonObject body = ctx.body().asJsonObject();
-                ObjectId id = new ObjectId(body.getString("id"));
+            JsonObject body = ctx.body().asJsonObject();
+            ObjectId id = new ObjectId(body.getString("id"));
 
-                GridFSBucket gridFSBucket = GridFSBuckets.create(database);
-                Document doc = pdfdb.find(Filters.eq("_id", id)).first();
-                if (doc == null) {
-                    JsonObject job = new JsonObject().put("message", "Record not found");
-                    ctx.response().setStatusCode(400).end(job.encode());
-                    return;
-                }
-
-                try {
-                    ObjectId pdfid = doc.getObjectId("fileid");
-                    gridFSBucket.delete(pdfid);
-
-                } catch (Exception e) {
-                    e.printStackTrace();
-                    JsonObject job = new JsonObject().put("message", "PDF Grif Fs Delete Failed");
-                    ctx.response().setStatusCode(400).end(job.encode());
-                    return;
-
-                }
-
-                DeleteResult result = pdfdb.deleteOne(Filters.eq("_id", id));
-                if (result.getDeletedCount() > 0) {
-                    JsonObject job = new JsonObject().put("message", "Deleted Successfully");
-                    ctx.response().setStatusCode(200).end(job.encode());
-                    return;
-                } else {
-                    JsonObject job = new JsonObject().put("message", "Delete Failed");
-                    ctx.response().setStatusCode(500).end(job.encode());
-                    return;
-                }
+            GridFSBucket gridFSBucket = GridFSBuckets.create(database);
+            Document doc = pdfdb.find(Filters.eq("_id", id)).first();
+            if (doc == null) {
+                JsonObject job = new JsonObject().put("message", "Record not found");
+                ctx.response().setStatusCode(400).end(job.encode());
+                return;
             }
+
+            try {
+                ObjectId pdfid = doc.getObjectId("fileid");
+                gridFSBucket.delete(pdfid);
+
+            } catch (Exception e) {
+                e.printStackTrace();
+                JsonObject job = new JsonObject().put("message", "PDF Grif Fs Delete Failed");
+                ctx.response().setStatusCode(400).end(job.encode());
+                return;
+
+            }
+
+            DeleteResult result = pdfdb.deleteOne(Filters.eq("_id", id));
+            if (result.getDeletedCount() > 0) {
+                JsonObject job = new JsonObject().put("message", "Deleted Successfully");
+                ctx.response().setStatusCode(200).end(job.encode());
+                return;
+            } else {
+                JsonObject job = new JsonObject().put("message", "Delete Failed");
+                ctx.response().setStatusCode(500).end(job.encode());
+                return;
+            }
+        }
     }
 
 
@@ -538,7 +537,7 @@ public class SampleService extends AbstractVerticle {
             }
 
         }
-}
+    }
 
     public void getpdfbyid3(RoutingContext ctx) {
 
@@ -600,7 +599,6 @@ public class SampleService extends AbstractVerticle {
             }
 
 
-
             List<ObjectId> recents = matchdoc.getList("recents", ObjectId.class);
 
             if (recents == null) {
@@ -630,31 +628,31 @@ public class SampleService extends AbstractVerticle {
     public void searchfilter(RoutingContext ctx) {
         if (JWTauthguest(ctx)) {
             System.out.println("In Search Filter");
-            int perpage=6;
+            int perpage = 6;
             JsonObject body = ctx.body().asJsonObject();
-            String course=body.getString("course");
-            String crscode=body.getString("code");
-            String year=body.getString("year");
-            String sess=body.getString("session");
-            int page=body.getInteger("page");
+            String course = body.getString("course");
+            String crscode = body.getString("code");
+            String year = body.getString("year");
+            String sess = body.getString("session");
+            int page = body.getInteger("page");
 
-            List<Bson> params=new ArrayList<>();
-            if(course!=null && !course.isEmpty()){
-                params.add(Filters.eq("course",course));
+            List<Bson> params = new ArrayList<>();
+            if (course != null && !course.isEmpty()) {
+                params.add(Filters.eq("course", course));
             }
-            if(crscode!=null && !crscode.isEmpty()){
-                params.add(Filters.eq("courseid",crscode));
+            if (crscode != null && !crscode.isEmpty()) {
+                params.add(Filters.eq("courseid", crscode));
             }
-            if(year!=null && !year.isEmpty()){
-                params.add(Filters.eq("year",year));
+            if (year != null && !year.isEmpty()) {
+                params.add(Filters.eq("year", year));
             }
-            if(sess!=null && !sess.isEmpty()){
-                params.add(Filters.eq("term",sess));
+            if (sess != null && !sess.isEmpty()) {
+                params.add(Filters.eq("term", sess));
             }
 
             Bson filter = params.isEmpty() ? new Document() : Filters.and(params);
-            JsonArray jarr=new JsonArray();
-            for( Document docs : pdfdb.find(filter).skip(page*perpage).limit(perpage)){
+            JsonArray jarr = new JsonArray();
+            for (Document docs : pdfdb.find(filter).skip(page * perpage).limit(perpage)) {
                 JsonObject json = new JsonObject();
 
                 ObjectId id = docs.getObjectId("_id");
@@ -668,13 +666,12 @@ public class SampleService extends AbstractVerticle {
                 jarr.add(json);
 
             }
-            if(!jarr.isEmpty()) {
+            if (!jarr.isEmpty()) {
                 System.out.println("Search Filter response sent.");
                 ctx.response()
                         .putHeader("Content-Type", "application/json")
                         .end(jarr.encodePrettily());
-            }
-            else{
+            } else {
                 System.out.println("Search filter response Failed.");
                 ctx.response()
                         .putHeader("Content-Type", "application/json")
@@ -684,33 +681,34 @@ public class SampleService extends AbstractVerticle {
         }
 
     }
-    public void studentHome(RoutingContext ctx){
+
+    public void studentHome(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        if(JWTauthguest(ctx)){
+        if (JWTauthguest(ctx)) {
             System.out.println("Success student home validation.");
             String auth = ctx.request().getHeader("Authorization");
             String token = auth.replace("Bearer ", "");
             String email = jtil.extractEmail(token);
             String role = jtil.extractRole(token);
 
-            Document master_response=new Document();
+            Document master_response = new Document();
             //getting the drop-down list parameters
-            List<String> coursenames=pdfdb.distinct("course",String.class).into(new ArrayList<>());
-            List<String> courseids=pdfdb.distinct("courseid",String.class).into(new ArrayList<>());
-            List<String> types=pdfdb.distinct("type",String.class).into(new ArrayList<>());
-            List<String> terms=pdfdb.distinct("term",String.class).into(new ArrayList<>());
-            List<String> program=pdfdb.distinct("program",String.class).into(new ArrayList<>());
-            List<String> year =pdfdb.distinct("year",String.class).into(new ArrayList<>());
+            List<String> coursenames = pdfdb.distinct("course", String.class).into(new ArrayList<>());
+            List<String> courseids = pdfdb.distinct("courseid", String.class).into(new ArrayList<>());
+            List<String> types = pdfdb.distinct("type", String.class).into(new ArrayList<>());
+            List<String> terms = pdfdb.distinct("term", String.class).into(new ArrayList<>());
+            List<String> program = pdfdb.distinct("program", String.class).into(new ArrayList<>());
+            List<String> year = pdfdb.distinct("year", String.class).into(new ArrayList<>());
 
-            master_response.append("courses",coursenames);
-            master_response.append("courseids",courseids);
-            master_response.append("types",types);
-            master_response.append("terms",terms);
-            master_response.append("program",program);
-            master_response.append("year",year);
+            master_response.append("courses", coursenames);
+            master_response.append("courseids", courseids);
+            master_response.append("types", types);
+            master_response.append("terms", terms);
+            master_response.append("program", program);
+            master_response.append("year", year);
 
             Document userDoc = usersdb.find(Filters.eq("email", email))
-                    .projection(Projections.include("recents","favourites"))
+                    .projection(Projections.include("recents", "favourites"))
                     .first();
 
             List<Document> randomPapers = pdfdb.aggregate(
@@ -723,7 +721,7 @@ public class SampleService extends AbstractVerticle {
 
             master_response.put("recommendedPapers", papersArray);
 
-            for (Document doc : randomPapers    ) {
+            for (Document doc : randomPapers) {
                 JsonObject paperJson = new JsonObject();
 
                 ObjectId obid = doc.getObjectId("_id");
@@ -738,9 +736,9 @@ public class SampleService extends AbstractVerticle {
             }
             master_response.put("recommendedPapers", papersArray);
 
-            List<ObjectId> recents= userDoc.getList("recents",ObjectId.class);
-            JsonArray recentaccess=new JsonArray();
-            if(!recents.isEmpty()) {
+            List<ObjectId> recents = userDoc.getList("recents", ObjectId.class);
+            JsonArray recentaccess = new JsonArray();
+            if (!recents.isEmpty()) {
                 for (ObjectId id : recents) {
                     Document docs = pdfdb.find(Filters.eq("_id", id)).first();
                     JsonObject json = new JsonObject();
@@ -756,7 +754,7 @@ public class SampleService extends AbstractVerticle {
                     recentaccess.add(json);
                 }
             }
-            master_response.append("recents",recentaccess);
+            master_response.append("recents", recentaccess);
 
 //            List<ObjectId> favs= userDoc.getList("favourites",ObjectId.class);
 //            JsonArray favpapers=new JsonArray();
@@ -779,64 +777,64 @@ public class SampleService extends AbstractVerticle {
 //
 //            master_response.append("favourites",favpapers);
             System.out.println("student home response sent.");
-            JsonObject job= new JsonObject(master_response);
+            JsonObject job = new JsonObject(master_response);
 
             ctx.response().end(job.encodePrettily());
         }
     }
 
 
-    public void requestPaper(RoutingContext ctx){
+    public void requestPaper(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        if(JWTauthguest(ctx)){
+        if (JWTauthguest(ctx)) {
             String auth = ctx.request().getHeader("Authorization");
             String token = auth.replace("Bearer ", "");
             String email = jtil.extractEmail(token);
             JsonObject job = new JsonObject();
 
             JsonObject body = ctx.body().asJsonObject();
-            String uname=body.getString("name");
-            String course=body.getString("course");
-            String crscode=body.getString("code");
-            String year=body.getString("year");
-            String sem=body.getString("sem");
-            String term=body.getString("term");
-            String details=body.getString("details");
+            String uname = body.getString("name");
+            String course = body.getString("course");
+            String crscode = body.getString("code");
+            String year = body.getString("year");
+            String sem = body.getString("sem");
+            String term = body.getString("term");
+            String details = body.getString("details");
             String rollno = email.substring(0, email.indexOf('@'));
-            String reqstatus="pending";
+            String reqstatus = "pending";
 
-            Document doc= new Document();
-            doc.append("user",uname)
-                    .append("rollno",rollno)
-                    .append("email",email)
-                    .append("course",course)
-                    .append("courseid",crscode)
-                    .append("year",year)
-                    .append("sem",sem)
-                    .append("term",term)
-                    .append("status",reqstatus);
+            Document doc = new Document();
+            doc.append("user", uname)
+                    .append("rollno", rollno)
+                    .append("email", email)
+                    .append("course", course)
+                    .append("courseid", crscode)
+                    .append("year", year)
+                    .append("sem", sem)
+                    .append("term", term)
+                    .append("status", reqstatus);
 
-            if(details!=null){
-                doc.append("details",details);
+            if (details != null) {
+                doc.append("details", details);
             }
-            InsertOneResult ins=reqdb.insertOne(doc);
+            InsertOneResult ins = reqdb.insertOne(doc);
 
-            if (ins.wasAcknowledged()){
-                job.put("message","success");
-                Document stats= reqdb.find(Filters.eq("stats","stats")).first();
+            if (ins.wasAcknowledged()) {
+                job.put("message", "success");
+                Document stats = reqdb.find(Filters.eq("stats", "stats")).first();
 
 //                    String  pend= stats.getString("pending");
 //                    int pending = Integer.parseInt(pend);
 //                    pending+=1;
-                int pending=stats.getInteger("pending");
-                pending+=1;
+                int pending = stats.getInteger("pending");
+                pending += 1;
 
-                Bson update=Updates.set("pending",pending);
-                UpdateResult res=reqdb.updateOne(Filters.eq("stats","stats"),update);
+                Bson update = Updates.set("pending", pending);
+                UpdateResult res = reqdb.updateOne(Filters.eq("stats", "stats"), update);
                 System.out.println("Matched: " + res.getMatchedCount());
                 System.out.println("Modified: " + res.getModifiedCount());
-            }else{
-                job.put("message","failed");
+            } else {
+                job.put("message", "failed");
             }
             ctx.response().end(job.encode());
 
@@ -851,7 +849,7 @@ public class SampleService extends AbstractVerticle {
             String status = body.getString("status");
             Document items = new Document();
             Document reqinfo = reqdb.find(Filters.eq("_id", id)).first();
-            JsonObject job= new JsonObject();
+            JsonObject job = new JsonObject();
 
 
             String remarks = reqinfo.getString("details");
@@ -873,47 +871,49 @@ public class SampleService extends AbstractVerticle {
 
 
             items.append("studentName", reqinfo.getString("user"))
-                .append("requeststatus", requestStatus)
-                .append("statuscolor", statusColor)
-                .append("courseName", reqinfo.getString("course"))
-                .append("courseId", reqinfo.getString("courseid"))
-                .append("year", reqinfo.getString("year"))
-                .append("semester", reqinfo.getString("sem"))
-                .append("term", reqinfo.getString("term"))
-                .append("remarks", remarks);
+                    .append("requeststatus", requestStatus)
+                    .append("statuscolor", statusColor)
+                    .append("courseName", reqinfo.getString("course"))
+                    .append("courseId", reqinfo.getString("courseid"))
+                    .append("year", reqinfo.getString("year"))
+                    .append("semester", reqinfo.getString("sem"))
+                    .append("term", reqinfo.getString("term"))
+                    .append("remarks", remarks);
 
-            Document stats= reqdb.find(Filters.eq("stats","stats")).first();
-            int approve= stats.getInteger("approved");
-            approve+=1;
+            Document stats = reqdb.find(Filters.eq("stats", "stats")).first();
+            int approve = stats.getInteger("approved");
+            approve += 1;
 
-            int pending=stats.getInteger("pending");
-            pending-=1;
+            int pending = stats.getInteger("pending");
+            pending -= 1;
 
-            Bson update=Updates.combine(Updates.set("pending",pending),Updates.set("approved",approve));
-            UpdateResult res1=reqdb.updateOne(Filters.eq("stats","stats"),update);
+            Bson update = Updates.combine(Updates.set("pending", pending), Updates.set("approved", approve));
+            UpdateResult res1 = reqdb.updateOne(Filters.eq("stats", "stats"), update);
 
-            DeleteResult res=reqdb.deleteOne(Filters.eq("_id",id));
+            DeleteResult res = reqdb.deleteOne(Filters.eq("_id", id));
 
-            if(res.wasAcknowledged() && res1.wasAcknowledged()){
-                ses.sendrequeststatus(reqinfo.getString("email"),items);
-                job.put("message","success");
+            if (res.wasAcknowledged() && res1.wasAcknowledged()) {
+                ses.sendrequeststatus(reqinfo.getString("email"), items);
+                job.put("message", "success");
                 ctx.response().end(job.encode());
-            }else{
-                job.put("message","failed to delete or update");
+            } else {
+                job.put("message", "failed to delete or update");
                 ctx.response().end(job.encode());
             }
-
 
 
         }
     }
 
 
-    public void  handleuploadS3(RoutingContext ctx){
+    public void handleuploadS3(RoutingContext ctx) {
         ctx.response().setChunked(true);
 
         if (JWTauthadmin(ctx)) {
             System.out.println("role and user valid valid succes");
+            String auth = ctx.request().getHeader("Authorization");
+            String token = auth.replace("Bearer ", "");
+            String email = jtil.extractEmail(token);
 
             String name = ctx.request().getFormAttribute("course");
             String courseid = ctx.request().getFormAttribute("id");
@@ -937,10 +937,10 @@ public class SampleService extends AbstractVerticle {
 
                             // SAME key = automatic replace
                             objectKey = courseid + "/"
-                                            + department + "/"
-                                            + sem + "/"
-                                            + year + "/"
-                                            + upload.fileName();
+                                    + department + "/"
+                                    + sem + "/"
+                                    + year + "/"
+                                    + upload.fileName();
 
                             try (InputStream pdfStream = Files.newInputStream(filePath)) {
 
@@ -974,6 +974,8 @@ public class SampleService extends AbstractVerticle {
                         .append("type", type)
                         .append("term", examTerm)
                         .append("year", year)
+                        .append("insertedby", email)
+                        .append("insertedat", new Date())
                         .append("bucket", "qvault-question-papers")
                         .append("objectKey", objectKey);
 
@@ -1011,6 +1013,9 @@ public class SampleService extends AbstractVerticle {
             ctx.response().setStatusCode(401).end("Unauthorized");
             return;
         }
+        String auth = ctx.request().getHeader("Authorization");
+        String token = auth.replace("Bearer ", "");
+        String email = jtil.extractEmail(token);
 
         String contentType = ctx.request().getHeader("Content-Type");
 
@@ -1029,7 +1034,9 @@ public class SampleService extends AbstractVerticle {
                     Updates.set("type", body.getString("type")),
                     Updates.set("term", body.getString("term")),
                     Updates.set("year", body.getString("year")),
-                    Updates.set("sem", body.getString("sem"))
+                    Updates.set("sem", body.getString("sem")),
+                    Updates.set("updatedby", email),
+                    Updates.set("updatedat", new Date())
             );
 
             UpdateResult result = pdfdb.updateOne(filter, update);
@@ -1122,6 +1129,8 @@ public class SampleService extends AbstractVerticle {
                     Updates.set("term", ctx.request().getFormAttribute("term")),
                     Updates.set("year", year),
                     Updates.set("sem", sem),
+                    Updates.set("updatedby", email),
+                    Updates.set("updatedat", new Date()),
                     Updates.set("bucket", bucket),
                     Updates.set("objectKey", newObjectKey)
             );
@@ -1151,7 +1160,7 @@ public class SampleService extends AbstractVerticle {
 
     public void handledeleteS3(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        if(JWTauthadmin(ctx)){
+        if (JWTauthadmin(ctx)) {
             JsonObject body = ctx.body().asJsonObject();
             ObjectId id = new ObjectId(body.getString("id"));
             Bson filter = Filters.eq("_id", id);
@@ -1174,25 +1183,25 @@ public class SampleService extends AbstractVerticle {
             }
 
 
-            try{
+            try {
                 s3.deleteObject(DeleteObjectRequest.builder()
                         .bucket(bucket)
                         .key(oldObjectKey)
                         .build());
 
-            }catch(Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
                 ctx.response().setStatusCode(500)
                         .end(new JsonObject().put("message", "S3 Delete Failed").encode());
                 return;
             }
 
-            DeleteResult del=pdfdb.deleteOne(filter);
+            DeleteResult del = pdfdb.deleteOne(filter);
 
-            if(del.getDeletedCount()>0){
+            if (del.getDeletedCount() > 0) {
                 ctx.response().setStatusCode(200)
                         .end(new JsonObject().put("message", "success").encode());
-            }else{
+            } else {
                 ctx.response().setStatusCode(400)
                         .end(new JsonObject().put("message", "failed").encode());
             }
@@ -1201,42 +1210,42 @@ public class SampleService extends AbstractVerticle {
         }
     }
 
-    public void adminhome(RoutingContext ctx){
+    public void adminhome(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        if(JWTauthadmin(ctx)){
+        if (JWTauthadmin(ctx)) {
             System.out.println("Success Admin Home stats validation.");
 
-            JsonObject master= new JsonObject();
-            Document statdoc= reqdb.find(Filters.eq("stats","stats")).first();
+            JsonObject master = new JsonObject();
+            Document statdoc = reqdb.find(Filters.eq("stats", "stats")).first();
 
             long count = pdfdb.countDocuments();
-            if(statdoc!=null && count!=0){
-                master.put("countpapers",count);
-                master.put("pending",statdoc.getInteger("pending").toString());
-                master.put("approved",statdoc.getInteger("approved").toString());
+            if (statdoc != null && count != 0) {
+                master.put("countpapers", count);
+                master.put("pending", statdoc.getInteger("pending").toString());
+                master.put("approved", statdoc.getInteger("approved").toString());
                 System.out.println("Admin home statr response sent.");
                 ctx.response()
                         .putHeader("Content-Type", "application/json")
                         .end(master.encodePrettily());
 
-            }else{
-                ctx.response().setStatusCode(400).end(new JsonObject().put("message","failed").encode());
+            } else {
+                ctx.response().setStatusCode(400).end(new JsonObject().put("message", "failed").encode());
             }
 
 
         }
     }
 
-    public void  adminhomeqp(RoutingContext ctx){
+    public void adminhomeqp(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        if(JWTauthadmin(ctx)){
+        if (JWTauthadmin(ctx)) {
             System.out.println("Success Admin Home validation.");
-            JsonObject body=ctx.body().asJsonObject();
-            int perpage=6;
-            int page=body.getInteger("page");
+            JsonObject body = ctx.body().asJsonObject();
+            int perpage = 6;
+            int page = body.getInteger("page");
 
-            JsonArray jarr=new JsonArray();
-            for( Document docs : pdfdb.find().skip(page*perpage).limit(perpage)){
+            JsonArray jarr = new JsonArray();
+            for (Document docs : pdfdb.find().skip(page * perpage).limit(perpage)) {
                 JsonObject json = new JsonObject();
 
                 ObjectId id = docs.getObjectId("_id");
@@ -1250,10 +1259,10 @@ public class SampleService extends AbstractVerticle {
                 jarr.add(json);
 
             }
-            JsonObject master=new JsonObject();
-            master.put("papers",jarr);
+            JsonObject master = new JsonObject();
+            master.put("papers", jarr);
 
-            if(!jarr.isEmpty()){
+            if (!jarr.isEmpty()) {
                 System.out.println("Admin home Paper response sent.");
                 ctx.response()
                         .putHeader("Content-Type", "application/json")
@@ -1263,69 +1272,68 @@ public class SampleService extends AbstractVerticle {
     }
 
 
-    public void addtoFavorites(RoutingContext ctx){
+    public void addtoFavorites(RoutingContext ctx) {
         ctx.response().setChunked(true);
-        if(JWTauthguest(ctx)){
+        if (JWTauthguest(ctx)) {
             String auth = ctx.request().getHeader("Authorization");
             String token = auth.replace("Bearer ", "");
             String email = jtil.extractEmail(token);
-            JsonObject body= ctx.body().asJsonObject();
-            ObjectId fileid= new ObjectId(body.getString("fileid"));
+            JsonObject body = ctx.body().asJsonObject();
+            ObjectId fileid = new ObjectId(body.getString("fileid"));
             Document matchdoc = usersdb.find(Filters.eq("email", email)).first();
 
-            List<ObjectId> favs=matchdoc.getList("favourites",ObjectId.class);
-            if(favs==null){
+            List<ObjectId> favs = matchdoc.getList("favourites", ObjectId.class);
+            if (favs == null) {
                 List<ObjectId> favs2 = new ArrayList<>();
                 favs2.add(fileid);
-                UpdateResult upd=usersdb.updateOne(
+                UpdateResult upd = usersdb.updateOne(
                         Filters.eq("email", email),
                         Updates.set("favourites", favs2));
-                if(upd.getModifiedCount()>0){
-                    ctx.response().setStatusCode(200).end(new JsonObject().put("message","success").encode());
+                if (upd.getModifiedCount() > 0) {
+                    ctx.response().setStatusCode(200).end(new JsonObject().put("message", "success").encode());
                 }
-            }else{
-                favs.add(0,fileid);
+            } else {
+                favs.add(0, fileid);
 
-                UpdateResult upd=usersdb.updateOne(
+                UpdateResult upd = usersdb.updateOne(
                         Filters.eq("email", email),
                         Updates.set("favourites", favs));
-                if(upd.getModifiedCount()>0){
-                    ctx.response().setStatusCode(200).end(new JsonObject().put("message","success").encode());
+                if (upd.getModifiedCount() > 0) {
+                    ctx.response().setStatusCode(200).end(new JsonObject().put("message", "success").encode());
                 }
 
             }
-            ctx.response().setStatusCode(400).end(new JsonObject().put("message","Failed").encode());
+            ctx.response().setStatusCode(400).end(new JsonObject().put("message", "Failed").encode());
         }
     }
 
-    public void deletefromFavorites(RoutingContext ctx){
-        if(JWTauthguest(ctx)){
+    public void deletefromFavorites(RoutingContext ctx) {
+        if (JWTauthguest(ctx)) {
             String auth = ctx.request().getHeader("Authorization");
             String token = auth.replace("Bearer ", "");
             String email = jtil.extractEmail(token);
-            JsonObject body= ctx.body().asJsonObject();
-            ObjectId fileid= new ObjectId(body.getString("fileid"));
+            JsonObject body = ctx.body().asJsonObject();
+            ObjectId fileid = new ObjectId(body.getString("fileid"));
 
             Document matchdoc = usersdb.find(Filters.eq("email", email)).first();
 
-            List<ObjectId> favs=matchdoc.getList("favourites",ObjectId.class);
+            List<ObjectId> favs = matchdoc.getList("favourites", ObjectId.class);
 
             favs.remove(fileid);
 
-            UpdateResult upd=usersdb.updateOne(
+            UpdateResult upd = usersdb.updateOne(
                     Filters.eq("email", email),
                     Updates.set("favourites", favs));
-            if(upd.getModifiedCount()>0){
-                ctx.response().setStatusCode(200).end(new JsonObject().put("message","success").encode());
-            }
-            else{
-                ctx.response().setStatusCode(400).end(new JsonObject().put("message","Failed").encode());
+            if (upd.getModifiedCount() > 0) {
+                ctx.response().setStatusCode(200).end(new JsonObject().put("message", "success").encode());
+            } else {
+                ctx.response().setStatusCode(400).end(new JsonObject().put("message", "Failed").encode());
             }
         }
     }
 
-    public void showFavorites(RoutingContext ctx){
-        if(JWTauthguest(ctx)) {
+    public void showFavorites(RoutingContext ctx) {
+        if (JWTauthguest(ctx)) {
             String auth = ctx.request().getHeader("Authorization");
             String token = auth.replace("Bearer ", "");
             String email = jtil.extractEmail(token);
@@ -1351,15 +1359,65 @@ public class SampleService extends AbstractVerticle {
                     }
                 }
                 ctx.response().setStatusCode(200).end(new JsonObject().put("favorites", favpapers).encodePrettily());
-            }catch (Exception e){
-                ctx.response().setStatusCode(400).end(new JsonObject().put("message","Failed").encode());
+            } catch (Exception e) {
+                ctx.response().setStatusCode(400).end(new JsonObject().put("message", "Failed").encode());
             }
         }
 
     }
 
+    public void createAdminuser(RoutingContext ctx) {
+        ctx.response().setChunked(true);
+        if (JWTauthSuperadmin(ctx)) {
+            JsonObject body = ctx.body().asJsonObject();
 
-    public Boolean JWTauthguest(RoutingContext ctx){
+            String email = body.getString("email");
+            String role = "Admin";
+            String designation = body.getString("designation");
+
+            String hashpass = hashPassword("1234");
+
+            Document insdoc = new Document("email", email)
+                    .append("pass", hashpass).append("role", role)
+                    .append("designation", designation)
+                    .append("status", "Active")
+                    .append("recents", new ArrayList<ObjectId>())
+                    .append("favourites", new ArrayList<ObjectId>());
+            InsertOneResult insres = usersdb.insertOne(insdoc);
+            if (insres.wasAcknowledged()) {
+                ctx.response().setStatusCode(200).end(new JsonObject().put("message", "success").encodePrettily());
+            } else {
+                ctx.response().setStatusCode(400).end(new JsonObject().put("message", "Failed").encodePrettily());
+            }
+
+
+        }
+    }
+
+    public void changeAdminstatus(RoutingContext ctx) {
+        ctx.response().setChunked(true);
+        if (JWTauthSuperadmin(ctx)) {
+            JsonObject body = ctx.body().asJsonObject();
+
+            String email = body.getString("email");
+            String status = body.getString("status");
+
+            Bson filter = Filters.eq("email", email);
+            Bson update = Updates.combine(
+                    Updates.set("status", status));
+            UpdateResult result = usersdb.updateOne(filter, update);
+
+            if (result.getModifiedCount() > 0) {
+                ctx.response().setStatusCode(200).end(new JsonObject().put("message", "success").encodePrettily());
+            } else {
+                ctx.response().setStatusCode(400).end(new JsonObject().put("message", "Failed").encodePrettily());
+            }
+
+        }
+    }
+
+
+    public Boolean JWTauthguest(RoutingContext ctx) {
         ctx.response().setChunked(true);
         String auth = ctx.request().getHeader("Authorization");
 
@@ -1378,15 +1436,23 @@ public class SampleService extends AbstractVerticle {
             Bson filt1 = Filters.eq("email", email);
             Document matchdoc = usersdb.find(filt1).first();
 
-            if (matchdoc != null && matchdoc.getString("email") != null && matchdoc.getString("role").equals(role) && (role.equals("Admin") || role.equals("Guest"))) {
-                return true;
 
-            }
-            else {
-                JsonObject job = new JsonObject().put("message", "Unauthorized access attempt.");
-                ctx.response().setStatusCode(403).end(job.encode());
+            if (matchdoc != null) {
+                String status = matchdoc.getString("status");
+                if (matchdoc.getString("email") != null
+                        && matchdoc.getString("role").equals(role)
+                        && ((role.equals("Admin") && status.equals("Active")) || role.equals("Guest") || role.equals("SuperAdmin"))) {
+                    return true;
+                }else{
+                    JsonObject job = new JsonObject().put("message", "Unauthorized access attempt.");
+                    ctx.response().setStatusCode(403).end(job.encode());
+                    return false;
+                }
+
+            } else {
+                JsonObject job = new JsonObject().put("message", "Error");
+                ctx.response().setStatusCode(500).end(job.encode());
                 return false;
-
             }
 
         } else {
@@ -1395,6 +1461,7 @@ public class SampleService extends AbstractVerticle {
             return false;
         }
     }
+
     public Boolean JWTauthadmin(RoutingContext ctx){
         ctx.response().setChunked(true);
         String auth = ctx.request().getHeader("Authorization");
@@ -1416,7 +1483,56 @@ public class SampleService extends AbstractVerticle {
             Bson filt1 = Filters.eq("email", email);
             Document matchdoc = usersdb.find(filt1).first();
 
-            if (matchdoc != null && matchdoc.getString("email") != null && matchdoc.getString("role").equals(role) && (role.equals("Admin"))) {
+            if (matchdoc != null) {
+                String status = matchdoc.getString("status");
+                if (matchdoc.getString("email") != null
+                        && matchdoc.getString("role").equals(role)
+                        && ((role.equals("Admin") && status.equals("Active")) || role.equals("SuperAdmin"))) {
+                    return true;
+                }else{
+                    JsonObject job = new JsonObject().put("message", "Unauthorized access attempt.");
+                    ctx.response().setStatusCode(403).end(job.encode());
+                    return false;
+                }
+            }
+            else {
+                JsonObject job = new JsonObject().put("message", "Error");
+                ctx.response().setStatusCode(500).end(job.encode());
+                return false;
+            }
+
+        } else {
+            JsonObject job = new JsonObject().put("message", "Expired or Invalid");
+            ctx.response().setStatusCode(401).end(job.encode());
+            return false;
+        }
+    }
+
+    public Boolean JWTauthSuperadmin(RoutingContext ctx){
+        ctx.response().setChunked(true);
+        String auth = ctx.request().getHeader("Authorization");
+
+        System.out.println("upload called");
+
+        if (auth == null || !auth.startsWith("Bearer ")) {
+            JsonObject job = new JsonObject().put("message", "Invalid Auth type");
+            ctx.response().end(job.encode());
+            System.out.println("auth null IF");
+            return false;
+        }
+
+        String token = auth.replace("Bearer ", "");
+        if (jtil.isTokenValid(token)) {
+            System.out.println("token valid succes");
+            String email = jtil.extractEmail(token);
+            String role = jtil.extractRole(token);
+            Bson filt1 = Filters.eq("email", email);
+            Document matchdoc = usersdb.find(filt1).first();
+
+            if (matchdoc != null
+                    && matchdoc.getString("email") != null
+                    && matchdoc.getString("role").equals(role)
+                    && (role.equals("SuperAdmin"))) {
                 return true;
 
             }

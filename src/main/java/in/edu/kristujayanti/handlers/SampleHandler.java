@@ -67,6 +67,9 @@ public class SampleHandler extends AbstractVerticle {
         router.put("/qvault/deleteFavs").handler(smp::deletefromFavorites);
         router.get("/qvault/showFavs").handler(smp::showFavorites);
 
+        router.post("/qvault/createAdmin").handler(smp::createAdminuser);
+        router.post("/qvault/Adminstatus").handler(smp::changeAdminstatus);
+
 
         presigner = S3Presigner.builder()
                 .region(Region.AP_SOUTH_1) // change if needed
