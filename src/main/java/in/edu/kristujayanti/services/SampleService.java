@@ -542,6 +542,7 @@ public class SampleService extends AbstractVerticle {
     public void getpdfbyid3(RoutingContext ctx) {
 
         if (JWTauthguest(ctx)) {
+            System.out.println("in getpdf");
 
             String auth = ctx.request().getHeader("Authorization");
             String token = auth.replace("Bearer ", "");
@@ -587,6 +588,8 @@ public class SampleService extends AbstractVerticle {
                 JsonObject response = new JsonObject()
                         .put("url", presignedUrl);
 
+
+                System.out.println("getpdf success");
                 ctx.response()
                         .putHeader("Content-Type", "application/json")
                         .end(response.encode());
@@ -717,24 +720,22 @@ public class SampleService extends AbstractVerticle {
                     )
             ).into(new ArrayList<>());
 
-            JsonArray papersArray = new JsonArray();
-
-            master_response.put("recommendedPapers", papersArray);
-
-            for (Document doc : randomPapers) {
-                JsonObject paperJson = new JsonObject();
-
-                ObjectId obid = doc.getObjectId("_id");
-                paperJson.put("_id", obid.toHexString());
-
-                for (String key : doc.keySet()) {
-                    if (!key.equals("_id")) {
-                        paperJson.put(key, doc.get(key));
-                    }
-                }
-                papersArray.add(paperJson);
-            }
-            master_response.put("recommendedPapers", papersArray);
+//            JsonArray papersArray = new JsonArray();
+//
+//            for (Document doc : randomPapers) {
+//                JsonObject paperJson = new JsonObject();
+//
+//                ObjectId obid = doc.getObjectId("_id");
+//                paperJson.put("_id", obid.toHexString());
+//
+//                for (String key : doc.keySet()) {
+//                    if (!key.equals("_id")) {
+//                        paperJson.put(key, doc.get(key));
+//                    }
+//                }
+//                papersArray.add(paperJson);
+//            }
+//            master_response.put("recommendedPapers", papersArray);
 
             List<ObjectId> recents = userDoc.getList("recents", ObjectId.class);
             JsonArray recentaccess = new JsonArray();
@@ -756,26 +757,28 @@ public class SampleService extends AbstractVerticle {
             }
             master_response.append("recents", recentaccess);
 
-//            List<ObjectId> favs= userDoc.getList("favourites",ObjectId.class);
-//            JsonArray favpapers=new JsonArray();
-//            if(!favs.isEmpty()) {
-//                for (ObjectId id : favs) {
-//                    Document docs = pdfdb.find(Filters.eq("_id", id)).projection(Projections.include("_id")).first();
-//                    JsonObject json = new JsonObject();
-//
-//                    ObjectId obid = docs.getObjectId("_id");
-//                    json.put("_id", obid.toHexString());
-//
-////                    for (String key : docs.keySet()) {
-////                        if (!(key.equals("_id") || key.equals("bucket") || key.equals("objectKey"))) {
-////                            json.put(key, docs.get(key));
-////                        }
-////                    }
-//                    favpapers.add(json);
-//                }
-//            }
-//
-//            master_response.append("favourites",favpapers);
+            List<ObjectId> favs= userDoc.getList("favourites",ObjectId.class);
+            int limit = Math.min(favs.size(), 6);
+            JsonArray favpapers=new JsonArray();
+            if(!favs.isEmpty()) {
+                for (int i=0;i<limit;i++) {
+                    ObjectId id= favs.get(i);
+                    Document docs = pdfdb.find(Filters.eq("_id", id)).first();
+                    JsonObject json = new JsonObject();
+
+                    ObjectId obid = docs.getObjectId("_id");
+                    json.put("_id", obid.toHexString());
+
+                    for (String key : docs.keySet()) {
+                        if (!(key.equals("_id") || key.equals("bucket") || key.equals("objectKey"))) {
+                            json.put(key, docs.get(key));
+                        }
+                    }
+                    favpapers.add(json);
+                }
+            }
+            master_response.append("favourites",favpapers);
+
             System.out.println("student home response sent.");
             JsonObject job = new JsonObject(master_response);
 
@@ -1275,6 +1278,7 @@ public class SampleService extends AbstractVerticle {
     public void addtoFavorites(RoutingContext ctx) {
         ctx.response().setChunked(true);
         if (JWTauthguest(ctx)) {
+            System.out.println("in add favs");
             String auth = ctx.request().getHeader("Authorization");
             String token = auth.replace("Bearer ", "");
             String email = jtil.extractEmail(token);
@@ -1290,18 +1294,27 @@ public class SampleService extends AbstractVerticle {
                         Filters.eq("email", email),
                         Updates.set("favourites", favs2));
                 if (upd.getModifiedCount() > 0) {
+                    System.out.println("add favs success");
                     ctx.response().setStatusCode(200).end(new JsonObject().put("message", "success").encode());
+                    return;
                 }
             } else {
-                favs.add(0, fileid);
+                if(!favs.contains(fileid)) {
+                    favs.add(0, fileid);
 
-                UpdateResult upd = usersdb.updateOne(
-                        Filters.eq("email", email),
-                        Updates.set("favourites", favs));
-                if (upd.getModifiedCount() > 0) {
-                    ctx.response().setStatusCode(200).end(new JsonObject().put("message", "success").encode());
+                    UpdateResult upd = usersdb.updateOne(
+                            Filters.eq("email", email),
+                            Updates.set("favourites", favs));
+                    if (upd.getModifiedCount() > 0) {
+                        System.out.println("add favs success");
+                        ctx.response().setStatusCode(200).end(new JsonObject().put("message", "success").encode());
+                        return;
+                    }
                 }
-
+                else {
+                    ctx.response().setStatusCode(200).end(new JsonObject().put("message", "exist").encode());
+                    return;
+                }
             }
             ctx.response().setStatusCode(400).end(new JsonObject().put("message", "Failed").encode());
         }
@@ -1309,6 +1322,7 @@ public class SampleService extends AbstractVerticle {
 
     public void deletefromFavorites(RoutingContext ctx) {
         if (JWTauthguest(ctx)) {
+            System.out.println("in delete favs");
             String auth = ctx.request().getHeader("Authorization");
             String token = auth.replace("Bearer ", "");
             String email = jtil.extractEmail(token);
@@ -1325,6 +1339,7 @@ public class SampleService extends AbstractVerticle {
                     Filters.eq("email", email),
                     Updates.set("favourites", favs));
             if (upd.getModifiedCount() > 0) {
+                System.out.println("delete favs success");
                 ctx.response().setStatusCode(200).end(new JsonObject().put("message", "success").encode());
             } else {
                 ctx.response().setStatusCode(400).end(new JsonObject().put("message", "Failed").encode());
@@ -1334,6 +1349,7 @@ public class SampleService extends AbstractVerticle {
 
     public void showFavorites(RoutingContext ctx) {
         if (JWTauthguest(ctx)) {
+            System.out.println("in show favs");
             String auth = ctx.request().getHeader("Authorization");
             String token = auth.replace("Bearer ", "");
             String email = jtil.extractEmail(token);
@@ -1358,7 +1374,8 @@ public class SampleService extends AbstractVerticle {
                         favpapers.add(json);
                     }
                 }
-                ctx.response().setStatusCode(200).end(new JsonObject().put("favorites", favpapers).encodePrettily());
+                System.out.println("show favs success");
+                ctx.response().setStatusCode(200).end(new JsonObject().put("favourites", favpapers).encodePrettily());
             } catch (Exception e) {
                 ctx.response().setStatusCode(400).end(new JsonObject().put("message", "Failed").encode());
             }
