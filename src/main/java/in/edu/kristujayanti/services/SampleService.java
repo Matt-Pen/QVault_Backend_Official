@@ -1274,6 +1274,47 @@ public class SampleService extends AbstractVerticle {
         }
     }
 
+    public void adminrequestlist(RoutingContext ctx){
+        ctx.response().setChunked(true);
+        if (JWTauthadmin(ctx)) {
+            System.out.println("Success Admin request");
+            JsonObject body = ctx.body().asJsonObject();
+            int perpage = 1;
+            int page = body.getInteger("page");
+
+            JsonArray jarr = new JsonArray();
+            Bson filter = Filters.ne("stats", "stats");
+            for (Document docs : reqdb.find(filter).skip(page * perpage).limit(perpage)) {
+                if(docs.getString("stats")!=null){
+                    perpage+=1;
+                    continue;
+                }
+                JsonObject json = new JsonObject();
+
+                ObjectId id = docs.getObjectId("_id");
+                json.put("_id", id.toHexString());
+
+                for (String key : docs.keySet()) {
+                    if (!(key.equals("_id"))) {
+                        json.put(key, docs.get(key));
+                    }
+                }
+                jarr.add(json);
+
+            }
+            JsonObject master = new JsonObject();
+            master.put("requests", jarr);
+
+            if (!jarr.isEmpty()) {
+                System.out.println("Admin Requests list success");
+                ctx.response()
+                        .putHeader("Content-Type", "application/json")
+                        .end(master.encodePrettily());
+            }
+        }
+
+    }
+
 
     public void addtoFavorites(RoutingContext ctx) {
         ctx.response().setChunked(true);
