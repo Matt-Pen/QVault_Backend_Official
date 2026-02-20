@@ -630,7 +630,7 @@ public class SampleService extends AbstractVerticle {
 
     public void searchfilter(RoutingContext ctx) {
         if (JWTauthguest(ctx)) {
-            System.out.println("In Search Filter");
+            System.out.println("In Search Filter Old");
             int perpage = 6;
             JsonObject body = ctx.body().asJsonObject();
             String course = body.getString("course");
@@ -670,12 +670,12 @@ public class SampleService extends AbstractVerticle {
 
             }
             if (!jarr.isEmpty()) {
-                System.out.println("Search Filter response sent.");
+                System.out.println("Search Filter old response sent.");
                 ctx.response()
                         .putHeader("Content-Type", "application/json")
                         .end(jarr.encodePrettily());
             } else {
-                System.out.println("Search filter response Failed.");
+                System.out.println("Search filter old response Failed.");
                 ctx.response()
                         .putHeader("Content-Type", "application/json")
                         .end(new JsonObject().put("page", "end").encode());
@@ -783,6 +783,240 @@ public class SampleService extends AbstractVerticle {
             JsonObject job = new JsonObject(master_response);
 
             ctx.response().end(job.encodePrettily());
+        }
+    }
+
+    public void studenthome2(RoutingContext ctx){
+        ctx.response().setChunked(true);
+        if (JWTauthguest(ctx)) {
+            System.out.println("Success student home validation.");
+            String auth = ctx.request().getHeader("Authorization");
+            String token = auth.replace("Bearer ", "");
+            String email = jtil.extractEmail(token);
+            String role = jtil.extractRole(token);
+
+            Document master_response = new Document();
+//            List<String> coursenames = pdfdb.distinct("course", String.class).into(new ArrayList<>());
+//            List<String> courseids = pdfdb.distinct("courseid", String.class).into(new ArrayList<>());
+
+            FindIterable<Document> course = pdfdb.find()
+                    .projection(Projections.include("courseid", "course"));
+
+            List<String> combinedCourses = new ArrayList<>();
+
+            for (Document doc : course) {
+
+                String courseId = doc.getString("courseid");
+                String courseName = doc.getString("course");
+
+                String combined = courseId + " - " + courseName;
+                if(combinedCourses.contains(combined)){
+                    continue;
+                }
+                combinedCourses.add(combined);
+            }
+
+
+            List<String> types = pdfdb.distinct("type", String.class).into(new ArrayList<>());
+            List<String> terms = pdfdb.distinct("term", String.class).into(new ArrayList<>());
+            List<String> year = pdfdb.distinct("year", String.class).into(new ArrayList<>());
+
+            master_response.append("courses",combinedCourses);
+            master_response.append("types", types);
+            master_response.append("terms", terms);
+            master_response.append("year", year);
+
+            Document userDoc = usersdb.find(Filters.eq("email", email))
+                    .projection(Projections.include("recents", "favourites"))
+                    .first();
+
+
+            List<ObjectId> recents = userDoc.getList("recents", ObjectId.class);
+            JsonArray recentaccess = new JsonArray();
+            if (!recents.isEmpty()) {
+                for (ObjectId id : recents) {
+                    Document docs = pdfdb.find(Filters.eq("_id", id)).first();
+                    JsonObject json = new JsonObject();
+
+                    ObjectId obid = docs.getObjectId("_id");
+                    json.put("_id", obid.toHexString());
+
+                    for (String key : docs.keySet()) {
+                        if (!(key.equals("_id") || key.equals("bucket") || key.equals("objectKey"))) {
+                            json.put(key, docs.get(key));
+                        }
+                    }
+                    recentaccess.add(json);
+                }
+            }
+            master_response.append("recents", recentaccess);
+
+            List<ObjectId> favs= userDoc.getList("favourites",ObjectId.class);
+            int limit = Math.min(favs.size(), 6);
+            JsonArray favpapers=new JsonArray();
+            if(!favs.isEmpty()) {
+                for (int i=0;i<limit;i++) {
+                    ObjectId id= favs.get(i);
+                    Document docs = pdfdb.find(Filters.eq("_id", id)).first();
+                    JsonObject json = new JsonObject();
+
+                    ObjectId obid = docs.getObjectId("_id");
+                    json.put("_id", obid.toHexString());
+
+                    for (String key : docs.keySet()) {
+                        if (!(key.equals("_id") || key.equals("bucket") || key.equals("objectKey"))) {
+                            json.put(key, docs.get(key));
+                        }
+                    }
+                    favpapers.add(json);
+                }
+            }
+            master_response.append("favourites",favpapers);
+
+            System.out.println("student home response sent.");
+            JsonObject job = new JsonObject(master_response);
+
+            ctx.response().end(job.encodePrettily());
+        }
+
+    }
+
+    public void searchfilternew(RoutingContext ctx){
+        ctx.response().setChunked(true);
+        if (JWTauthguest(ctx)) {
+            System.out.println("Success Search Filter new validation.");
+            String auth = ctx.request().getHeader("Authorization");
+            String token = auth.replace("Bearer ", "");
+
+            System.out.println("In Search Filter");
+            int perpage = 6;
+            JsonObject body = ctx.body().asJsonObject();
+            String course = body.getString("course");
+            String year = body.getString("year");
+            String sess = body.getString("term");
+            int page = body.getInteger("page",0);
+
+            List<Bson> params = new ArrayList<>();
+            if (course != null && !course.isEmpty()) {
+                String[] parts = course.split(" - ");
+
+                String courseCode = parts[0];
+                String courseName = parts[1];
+
+                params.add(Filters.and(Filters.eq("course",courseName),
+                        Filters.eq("courseid",courseCode)));
+            }
+            if (year != null && !year.isEmpty()) {
+                params.add(Filters.eq("year", year));
+            }
+            if (sess != null && !sess.isEmpty()) {
+                params.add(Filters.eq("term", sess));
+            }
+
+            Bson filter = params.isEmpty() ? new Document() : Filters.and(params);
+            JsonArray jarr = new JsonArray();
+            for (Document docs : pdfdb.find(filter).skip(page * perpage).limit(perpage)) {
+                JsonObject json = new JsonObject();
+
+                ObjectId id = docs.getObjectId("_id");
+                json.put("_id", id.toHexString());
+
+                for (String key : docs.keySet()) {
+                    if (!(key.equals("_id") || key.equals("bucket") || key.equals("objectKey"))) {
+                        json.put(key, docs.get(key));
+                    }
+                }
+                jarr.add(json);
+
+            }
+            if (!jarr.isEmpty()) {
+                System.out.println("Search Filter new response sent.");
+                ctx.response()
+                        .putHeader("Content-Type", "application/json")
+                        .end(jarr.encodePrettily());
+            } else {
+                System.out.println("Search filter new response Failed.");
+                ctx.response()
+                        .putHeader("Content-Type", "application/json")
+                        .end(new JsonObject().put("page", "end").encode());
+            }
+
+        }
+
+    }
+
+    public void searchlist(RoutingContext ctx){
+        ctx.response().setChunked(true);
+        if (JWTauthguest(ctx)) {
+            System.out.println("Success Search List validation.");
+            String auth = ctx.request().getHeader("Authorization");
+            String token = auth.replace("Bearer ", "");
+
+            JsonObject body = ctx.body().asJsonObject();
+            String course = body.getString("course");
+            String years = body.getString("year");
+            String sess = body.getString("term");
+
+            List<String> terms= new ArrayList<>();
+            List<String> year= new ArrayList<>();
+            if((course != null && !course.isEmpty()) && (sess != null && !sess.isEmpty())){
+                String[] parts = course.split(" - ");
+
+                String courseCode = parts[0];
+                String courseName = parts[1];
+
+                Bson filters=Filters.and(Filters.eq("course",courseName),
+                        Filters.eq("courseid",courseCode),Filters.eq("term",sess));
+                year = pdfdb.distinct("year", String.class).filter(filters).into(new ArrayList<>());
+
+
+                Document master_response = new Document();
+                master_response.append("years",year);
+
+                System.out.println("Search List response sent.");
+                JsonObject job = new JsonObject(master_response);
+                ctx.response().end(job.encodePrettily());
+                return;
+            } else if ((course != null && !course.isEmpty()) && (years != null && !years.isEmpty())) {
+                String[] parts = course.split(" - ");
+
+                String courseCode = parts[0];
+                String courseName = parts[1];
+
+                Bson filters=Filters.and(Filters.eq("course",courseName),
+                        Filters.eq("courseid",courseCode),Filters.eq("year",years));
+                terms = pdfdb.distinct("term", String.class).filter(filters).into(new ArrayList<>());
+
+
+                Document master_response = new Document();
+                master_response.append("terms",terms);
+
+                System.out.println("Search List response sent.");
+                JsonObject job = new JsonObject(master_response);
+                ctx.response().end(job.encodePrettily());
+                return;
+            } else if (course != null && !course.isEmpty()) {
+                String[] parts = course.split(" - ");
+
+                String courseCode = parts[0];
+                String courseName = parts[1];
+
+                Bson filters=Filters.and(Filters.eq("course",courseName),
+                        Filters.eq("courseid",courseCode));
+                terms = pdfdb.distinct("term", String.class).filter(filters).into(new ArrayList<>());
+                year = pdfdb.distinct("year", String.class).filter(filters).into(new ArrayList<>());
+
+                Document master_response = new Document();
+                master_response.append("terms",terms);
+                master_response.append("years",year);
+
+                System.out.println("Search List response sent.");
+                JsonObject job = new JsonObject(master_response);
+                ctx.response().end(job.encodePrettily());
+                return;
+
+            }
+
         }
     }
 
@@ -978,7 +1212,7 @@ public class SampleService extends AbstractVerticle {
                         .append("term", examTerm)
                         .append("year", year)
                         .append("insertedby", email)
-                        .append("insertedat", new Date())
+                        .append("insertedate", new Date())
                         .append("bucket", "qvault-question-papers")
                         .append("objectKey", objectKey);
 

@@ -53,6 +53,13 @@ public class SampleHandler extends AbstractVerticle {
 
         router.get("/qvault/studenthome").handler(smp::studentHome);
 
+        router.get("/qvault/studenthome2").handler(smp::studenthome2);
+        router.post("/qvault/searchfilternew").handler(smp::searchfilternew);
+        router.post("/qvault/searchlist").handler(smp::searchlist);
+
+
+
+
         router.post("/qvault/requestpaper").handler(smp::requestPaper);
         router.post("/qvault/requeststatusupdate").handler(smp::requestpaperstatus);
 
