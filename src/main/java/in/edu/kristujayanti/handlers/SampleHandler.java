@@ -29,6 +29,7 @@ public class SampleHandler extends AbstractVerticle {
                 .allowedMethod(HttpMethod.GET)
                 .allowedMethod(HttpMethod.DELETE)
                 .allowedMethod(HttpMethod.PATCH)
+                .allowedMethod(HttpMethod.PUT)
                 .allowedHeader("Content-Type")
                 .allowedHeader("Authorization"));
 
