@@ -1251,6 +1251,7 @@ public class SampleService extends AbstractVerticle {
             ctx.response().setStatusCode(401).end("Unauthorized");
             return;
         }
+        System.out.println("Update validation");
         String auth = ctx.request().getHeader("Authorization");
         String token = auth.replace("Bearer ", "");
         String email = jtil.extractEmail(token);
@@ -1278,7 +1279,7 @@ public class SampleService extends AbstractVerticle {
             );
 
             UpdateResult result = pdfdb.updateOne(filter, update);
-
+            System.out.println("Updated meta data success");
             ctx.response()
                     .setStatusCode(result.getModifiedCount() > 0 ? 200 : 400)
                     .end(new JsonObject()
@@ -1382,7 +1383,7 @@ public class SampleService extends AbstractVerticle {
             }
 
             UpdateResult result = pdfdb.updateOne(filter, update);
-
+            System.out.println("Updated meta data success");
             ctx.response()
                     .setStatusCode(result.getModifiedCount() > 0 ? 200 : 400)
                     .end(new JsonObject()
