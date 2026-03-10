@@ -30,6 +30,7 @@ import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
@@ -1212,7 +1213,7 @@ public class SampleService extends AbstractVerticle {
                         .append("term", examTerm)
                         .append("year", year)
                         .append("insertedby", email)
-                        .append("insertedate", new Date())
+                        .append("insertedate", System.currentTimeMillis())
                         .append("bucket", "qvault-question-papers")
                         .append("objectKey", objectKey);
 
@@ -1273,7 +1274,7 @@ public class SampleService extends AbstractVerticle {
                     Updates.set("year", body.getString("year")),
                     Updates.set("sem", body.getString("sem")),
                     Updates.set("updatedby", email),
-                    Updates.set("updatedat", new Date())
+                    Updates.set("updatedate", System.currentTimeMillis())
             );
 
             UpdateResult result = pdfdb.updateOne(filter, update);
@@ -1367,7 +1368,7 @@ public class SampleService extends AbstractVerticle {
                     Updates.set("year", year),
                     Updates.set("sem", sem),
                     Updates.set("updatedby", email),
-                    Updates.set("updatedat", new Date()),
+                    Updates.set("updatedate", System.currentTimeMillis()),
                     Updates.set("bucket", bucket),
                     Updates.set("objectKey", newObjectKey)
             );
@@ -1482,6 +1483,7 @@ public class SampleService extends AbstractVerticle {
             int page = body.getInteger("page");
 
             JsonArray jarr = new JsonArray();
+            SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
             for (Document docs : pdfdb.find().skip(page * perpage).limit(perpage)) {
                 JsonObject json = new JsonObject();
 
@@ -1490,7 +1492,14 @@ public class SampleService extends AbstractVerticle {
 
                 for (String key : docs.keySet()) {
                     if (!(key.equals("_id") || key.equals("bucket") || key.equals("objectKey"))) {
-                        json.put(key, docs.get(key));
+                        if (key.equals("insertedate") || key.equals("updatedate")) {
+                            Long millis = docs.getLong(key);
+                            if (millis != null) {
+                                json.put(key, sdf.format(new Date(millis)));
+                            }
+                        } else {
+                            json.put(key, docs.get(key));
+                        }
                     }
                 }
                 jarr.add(json);
