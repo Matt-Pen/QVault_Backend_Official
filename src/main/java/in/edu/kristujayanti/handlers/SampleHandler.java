@@ -1,6 +1,6 @@
 package in.edu.kristujayanti.handlers;
 
-import in.edu.kristujayanti.services.SampleService;
+import in.edu.kristujayanti.services.*;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
 import io.vertx.core.Promise;
@@ -39,46 +39,53 @@ public class SampleHandler extends AbstractVerticle {
                 .build();
 
         SampleService smp = new SampleService(s3Client);
+        Authentication auth=new Authentication();
+        CRUD crud=new CRUD(s3Client);
+        AdminHome admin= new AdminHome();
+        StudentHome stud=new StudentHome();
+        SearchAndGetPDF search=new SearchAndGetPDF();
 
 
-        router.post("/qvault/usersign").handler(smp::usersignup);
-        router.post("/qvault/userlog").handler(smp::userlogin);
+
+
 //        router.post("/logout").handler(smp::logout);
-        router.post("/qvault/resetpass").handler(smp::resetpassword);
+
+        //Deprecated Endpoints
         router.post("/qvault/uploadQP").handler(smp::handleupload);
         router.put("/qvault/handleupdate").handler(smp::handleupdate);
         router.delete("/qvault/handledelete").handler(smp::deleterecord);
-
         router.get("/qvault/getpdfold").handler(smp::getpdfbyid2);
         router.post("/qvault/searchfilter").handler(smp::searchfilter);
-
         router.get("/qvault/studenthome").handler(smp::studentHome);
 
-        router.get("/qvault/studenthome2").handler(smp::studenthome2);
-        router.post("/qvault/searchfilternew").handler(smp::searchfilternew);
-        router.post("/qvault/searchlist").handler(smp::searchlist);
 
 
+        //Active Endpoints
+        router.post("/qvault/usersign").handler(auth::usersignup);
+        router.post("/qvault/userlog").handler(auth::userlogin);
+        router.post("/qvault/resetpass").handler(auth::resetpassword);
 
+        router.get("/qvault/studenthome2").handler(stud::studenthome2);
+        router.post("/qvault/searchfilternew").handler(search::searchfilternew);
+        router.post("/qvault/searchlist").handler(search::searchlist);
+        router.post("/qvault/requestpaper").handler(stud::requestPaper);
+        router.post("/qvault/requeststatusupdate").handler(admin::requestpaperstatus);
 
-        router.post("/qvault/requestpaper").handler(smp::requestPaper);
-        router.post("/qvault/requeststatusupdate").handler(smp::requestpaperstatus);
+        router.post("/qvault/uploadQPS3").handler(crud::handleuploadS3);
+        router.post("/qvault/getpdf").handler(search::getpdfbyid3);
+        router.put("/qvault/handleupdateS3").handler(crud::handleupdateS3);
+        router.delete("/qvault/handledeleteS3").handler(crud::handledeleteS3);
 
-        router.post("/qvault/uploadQPS3").handler(smp::handleuploadS3);
-        router.post("/qvault/getpdf").handler(smp::getpdfbyid3);
-        router.put("/qvault/handleupdateS3").handler(smp::handleupdateS3);
-        router.delete("/qvault/handledeleteS3").handler(smp::handledeleteS3);
+        router.post("/qvault/adminhome").handler(admin::adminhome);
+        router.post("/qvault/adminhomeQP").handler(admin::adminhomeqp);
+        router.post("/qvault/adminrequests").handler(admin::adminrequestlist);
 
-        router.post("/qvault/adminhome").handler(smp::adminhome);
-        router.post("/qvault/adminhomeQP").handler(smp::adminhomeqp);
-        router.post("/qvault/adminrequests").handler(smp::adminrequestlist);
+        router.post("/qvault/addFavs").handler(stud::addtoFavorites);
+        router.post("/qvault/deleteFavs").handler(stud::deletefromFavorites);
+        router.get("/qvault/showFavs").handler(stud::showFavorites);
 
-        router.post("/qvault/addFavs").handler(smp::addtoFavorites);
-        router.post("/qvault/deleteFavs").handler(smp::deletefromFavorites);
-        router.get("/qvault/showFavs").handler(smp::showFavorites);
-
-        router.post("/qvault/createAdmin").handler(smp::createAdminuser);
-        router.post("/qvault/Adminstatus").handler(smp::changeAdminstatus);
+        router.post("/qvault/createAdmin").handler(admin::createAdminuser);
+        router.post("/qvault/Adminstatus").handler(admin::changeAdminstatus);
 
 
         presigner = S3Presigner.builder()
