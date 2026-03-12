@@ -1,10 +1,8 @@
 package in.edu.kristujayanti.services;
 
-import com.mongodb.client.MongoClient;
-import com.mongodb.client.MongoClients;
-import com.mongodb.client.MongoCollection;
-import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.*;
 import com.mongodb.client.model.Filters;
+import com.mongodb.client.model.Projections;
 import com.mongodb.client.model.Updates;
 import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.InsertOneResult;
@@ -22,6 +20,7 @@ import org.bson.types.ObjectId;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 public class AdminHome {
     Authentication auth= new Authentication();
@@ -43,11 +42,29 @@ public class AdminHome {
             JsonObject master = new JsonObject();
             Document statdoc = reqdb.find(Filters.eq("stats", "stats")).first();
 
+            FindIterable<Document> course = pdfdb.find()
+                    .projection(Projections.include("courseid", "course"));
+
+            List<String> combinedCourses = new ArrayList<>();
+
+            for (Document doc : course) {
+
+                String courseId = doc.getString("courseid");
+                String courseName = doc.getString("course");
+
+                String combined = courseId + " - " + courseName;
+                if(combinedCourses.contains(combined)){
+                    continue;
+                }
+                combinedCourses.add(combined);
+            }
+
             long count = pdfdb.countDocuments();
             if (statdoc != null && count != 0) {
                 master.put("countpapers", count);
                 master.put("pending", statdoc.getInteger("pending").toString());
                 master.put("approved", statdoc.getInteger("approved").toString());
+                master.put("courses",combinedCourses);
                 System.out.println("Admin home statr response sent.");
                 ctx.response()
                         .putHeader("Content-Type", "application/json")
