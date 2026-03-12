@@ -1,5 +1,11 @@
 package in.edu.kristujayanti.handlers;
 
+import com.mongodb.client.MongoClient;
+import com.mongodb.client.MongoClients;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
+import com.mongodb.client.model.IndexOptions;
+import in.edu.kristujayanti.secretclass;
 import in.edu.kristujayanti.services.*;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
@@ -10,10 +16,13 @@ import io.vertx.core.http.HttpServer;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CorsHandler;
+import org.bson.Document;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+
+import java.util.concurrent.TimeUnit;
 
 public class SampleHandler extends AbstractVerticle {
     public static S3Presigner presigner;
@@ -22,6 +31,16 @@ public class SampleHandler extends AbstractVerticle {
         Vertx vertx = Vertx.vertx();
         Router router = Router.router(vertx);
         router.route().handler(BodyHandler.create());
+        secretclass srt = new secretclass();
+        String connectionString = srt.constr;
+        MongoClient mongoClient = MongoClients.create(connectionString);
+        MongoDatabase database = mongoClient.getDatabase("QVault");
+        MongoCollection<Document> reqdb = database.getCollection("Requests");
+        reqdb.createIndex(
+                new Document("deleteAt", 1),
+                new IndexOptions().expireAfter(0L, TimeUnit.SECONDS)
+        );
+
 
         router.route().handler(CorsHandler.create("*")
                 .allowedMethod(HttpMethod.OPTIONS)

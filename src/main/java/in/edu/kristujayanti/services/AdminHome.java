@@ -21,6 +21,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class AdminHome {
     Authentication auth= new Authentication();
@@ -170,9 +171,14 @@ public class AdminHome {
             Bson update = Updates.combine(Updates.set("pending", pending), Updates.set("approved", approve));
             UpdateResult res1 = reqdb.updateOne(Filters.eq("stats", "stats"), update);
 
-            DeleteResult res = reqdb.deleteOne(Filters.eq("_id", id));
+            Date deleteTime = new Date(System.currentTimeMillis() + 120000); // 24 hours
 
-            if (res.wasAcknowledged() && res1.wasAcknowledged()) {
+            UpdateResult res = reqdb.updateOne(
+                    Filters.eq("_id", id),
+                    Updates.set("deleteAt", deleteTime)
+            );
+
+            if (res.getModifiedCount() > 0 && res1.wasAcknowledged()) {
                 ses.sendrequeststatus(reqinfo.getString("email"), items);
                 job.put("message", "success");
                 ctx.response().end(job.encode());
@@ -191,7 +197,7 @@ public class AdminHome {
         if (auth.JWTauthadmin(ctx)) {
             System.out.println("Success Admin request");
             JsonObject body = ctx.body().asJsonObject();
-            int perpage = 1;
+            int perpage = 6;
             int page = body.getInteger("page");
 
             JsonArray jarr = new JsonArray();
