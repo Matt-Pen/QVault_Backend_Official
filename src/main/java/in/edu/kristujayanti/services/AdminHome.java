@@ -161,6 +161,9 @@ public class AdminHome {
                     .append("term", reqinfo.getString("term"))
                     .append("remarks", remarks);
 
+            Bson update1=Updates.combine(Updates.set("status",requestStatus));
+            UpdateResult res2=reqdb.updateOne(Filters.eq("_id",id),update1);
+
             Document stats = reqdb.find(Filters.eq("stats", "stats")).first();
             int approve = stats.getInteger("approved");
             approve += 1;
