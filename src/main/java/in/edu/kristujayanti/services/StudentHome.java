@@ -139,6 +139,8 @@ public class StudentHome extends AbstractVerticle {
             String crscode = body.getString("code");
             String year = body.getString("year");
             String sem = body.getString("sem");
+            String prog=body.getString("program");
+            String type=body.getString("type");
             String term = body.getString("term");
             String details = body.getString("details");
             String rollno = email.substring(0, email.indexOf('@'));
@@ -152,6 +154,8 @@ public class StudentHome extends AbstractVerticle {
                     .append("courseid", crscode)
                     .append("year", year)
                     .append("sem", sem)
+                    .append("program",prog)
+                    .append("type",type)
                     .append("term", term)
                     .append("status", reqstatus);
 

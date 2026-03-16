@@ -105,6 +105,7 @@ public class SampleHandler extends AbstractVerticle {
 
         router.post("/qvault/createAdmin").handler(admin::createAdminuser);
         router.post("/qvault/Adminstatus").handler(admin::changeAdminstatus);
+        router.post("/qvault/listAdmins").handler(admin::listAdmins);
 
 
         presigner = S3Presigner.builder()

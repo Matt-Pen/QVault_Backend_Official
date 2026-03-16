@@ -169,7 +169,13 @@ public class AdminHome {
             approve += 1;
 
             int pending = stats.getInteger("pending");
-            pending -= 1;
+            if(pending-1 != -1){
+                pending -= 1;
+            }
+            else{
+                pending=0;
+            }
+
 
             Bson update = Updates.combine(Updates.set("pending", pending), Updates.set("approved", approve));
             UpdateResult res1 = reqdb.updateOne(Filters.eq("stats", "stats"), update);
@@ -252,7 +258,8 @@ public class AdminHome {
                     .append("designation", designation)
                     .append("status", "Active")
                     .append("recents", new ArrayList<ObjectId>())
-                    .append("favourites", new ArrayList<ObjectId>());
+                    .append("favourites", new ArrayList<ObjectId>())
+                    .append("date",System.currentTimeMillis());
             InsertOneResult insres = usersdb.insertOne(insdoc);
             if (insres.wasAcknowledged()) {
                 ctx.response().setStatusCode(200).end(new JsonObject().put("message", "success").encodePrettily());
@@ -282,6 +289,55 @@ public class AdminHome {
             } else {
                 ctx.response().setStatusCode(400).end(new JsonObject().put("message", "Failed").encodePrettily());
             }
+
+        }
+    }
+
+    public void listAdmins(RoutingContext ctx){
+        if(auth.JWTauthSuperadmin(ctx)){
+            System.out.println("Success Admin request");
+            JsonObject body = ctx.body().asJsonObject();
+            int perpage = 6;
+            int page = body.getInteger("page");
+
+            JsonArray jarr = new JsonArray();
+            Bson filter = Filters.eq("role", "Admin");
+
+            for (Document docs : usersdb.find(filter).skip(page * perpage).limit(perpage)) {
+                JsonObject json = new JsonObject();
+
+                ObjectId id = docs.getObjectId("_id");
+                json.put("_id", id.toHexString());
+                SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy HH:mm:ss");
+                for (String key : docs.keySet()) {
+                    if (!(key.equals("_id")) &&
+                            !(key.equals("recents")) &&
+                            !(key.equals("favourites")) &&
+                            !(key.equals("pass"))) {
+                        if(key.equals("date")){
+                            Long millis = docs.getLong("date");
+                            if (millis != null) {
+                                json.put(key, sdf.format(new Date(millis)));
+                            }
+                        }
+                        else {
+                            json.put(key, docs.get(key));
+                        }
+                    }
+                }
+                jarr.add(json);
+
+            }
+            JsonObject master = new JsonObject();
+            master.put("Admins", jarr);
+
+            if (!jarr.isEmpty()) {
+                System.out.println("Admin Requests list success");
+                ctx.response()
+                        .putHeader("Content-Type", "application/json")
+                        .end(master.encodePrettily());
+            }
+
 
         }
     }
