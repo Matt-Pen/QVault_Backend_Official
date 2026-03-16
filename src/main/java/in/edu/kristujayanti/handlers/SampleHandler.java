@@ -88,7 +88,7 @@ public class SampleHandler extends AbstractVerticle {
         router.post("/qvault/searchfilternew").handler(search::searchfilternew);
         router.post("/qvault/searchlist").handler(search::searchlist);
         router.post("/qvault/requestpaper").handler(stud::requestPaper);
-        router.post("/qvault/requeststatusupdate").handler(admin::requestpaperstatus);
+
 
         router.post("/qvault/uploadQPS3").handler(crud::handleuploadS3);
         router.post("/qvault/getpdf").handler(search::getpdfbyid3);
@@ -98,6 +98,7 @@ public class SampleHandler extends AbstractVerticle {
         router.post("/qvault/adminhome").handler(admin::adminhome);
         router.post("/qvault/adminhomeQP").handler(admin::adminhomeqp);
         router.post("/qvault/adminrequests").handler(admin::adminrequestlist);
+        router.post("/qvault/requeststatusupdate").handler(admin::requestpaperstatus);
 
         router.post("/qvault/addFavs").handler(stud::addtoFavorites);
         router.post("/qvault/deleteFavs").handler(stud::deletefromFavorites);
