@@ -106,6 +106,7 @@ public class Authentication extends AbstractVerticle {
         String desig = "";
         String role = "";
         String userstatus="";
+        String ustatus="";
 
         System.out.println("In Login");
         String token2 = jedis.get("jwt:ref" + email);
@@ -133,10 +134,10 @@ public class Authentication extends AbstractVerticle {
                     desig = matchdoc.getString("designation");
                     role = matchdoc.getString("role");
 
-                    if (userstatus == null) {
-                        userstatus = "";
-                    } else if (userstatus.equals("Inactive")) {
-                        status = "Inactive Account";
+                    if (userstatus != null) {
+                        ustatus=userstatus;
+                    } else {
+                        ustatus = "";
                     }
                     System.out.println(getoken("jwt:ref" + email));
                 } else if (userstatus.equals("Inactive")) {
@@ -147,7 +148,12 @@ public class Authentication extends AbstractVerticle {
             }
 
         }
-        JsonObject job = new JsonObject().put("message", status).put("access token", acctoken).put("refresh token", reftoken).put("designation", desig).put("role", role);
+        JsonObject job = new JsonObject().put("message", status)
+                .put("access token", acctoken)
+                .put("refresh token", reftoken)
+                .put("designation", desig)
+                .put("role", role)
+                .put("status",ustatus);
         ctx.response().end(job.encodePrettily());
     }
 
