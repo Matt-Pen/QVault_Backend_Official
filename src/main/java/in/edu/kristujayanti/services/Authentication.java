@@ -142,6 +142,7 @@ public class Authentication extends AbstractVerticle {
                     System.out.println(getoken("jwt:ref" + email));
                 } else if (userstatus.equals("Inactive")) {
                     status="Deactivated Account";
+                    ustatus=userstatus;
                 }
             } else {
                 status = "invalid password";
