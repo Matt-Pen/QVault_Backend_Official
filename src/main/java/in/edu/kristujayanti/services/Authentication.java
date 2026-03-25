@@ -105,6 +105,7 @@ public class Authentication extends AbstractVerticle {
         String status = "";
         String desig = "";
         String role = "";
+        String userstatus="";
 
         System.out.println("In Login");
         String token2 = jedis.get("jwt:ref" + email);
@@ -116,20 +117,31 @@ public class Authentication extends AbstractVerticle {
 
         Bson filt1 = Filters.eq("email", email);
         Document matchdoc = usersdb.find(filt1).first();
+        userstatus=matchdoc.getString("status");
         if (matchdoc == null) {
             status = "invalid username";
         } else {
             String dbpass = matchdoc.getString("pass");
 
             if (verifyPassword(pass, dbpass)) {
-                status = "Login success";
-                String dbrole = matchdoc.getString("role");
-                acctoken = jtil.generateAccessToken(email, 30, dbrole);
-                reftoken = jtil.generateRefreshToken(email, 7, dbrole);
-                setoken("jwt:ref" + email, reftoken);
-                desig = matchdoc.getString("designation");
-                role = matchdoc.getString("role");
-                System.out.println(getoken("jwt:ref" + email));
+                if(userstatus== null || userstatus.equals("Active")) {
+                    status = "Login success";
+                    String dbrole = matchdoc.getString("role");
+                    acctoken = jtil.generateAccessToken(email, 30, dbrole);
+                    reftoken = jtil.generateRefreshToken(email, 7, dbrole);
+                    setoken("jwt:ref" + email, reftoken);
+                    desig = matchdoc.getString("designation");
+                    role = matchdoc.getString("role");
+
+                    if (userstatus == null) {
+                        userstatus = "";
+                    } else if (userstatus.equals("Inactive")) {
+                        status = "Inactive Account";
+                    }
+                    System.out.println(getoken("jwt:ref" + email));
+                } else if (userstatus.equals("Inactive")) {
+                    status="Deactivated Account";
+                }
             } else {
                 status = "invalid password";
             }
