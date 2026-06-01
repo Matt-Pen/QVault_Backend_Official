@@ -2,6 +2,8 @@
 
 A Java backend for **QVault**, a question-paper repository system built for Kristu Jayanti College. Students can search, view, and request question papers, while admins manage uploads and handle requests. Built with Vert.x, MongoDB, Redis, and AWS (S3 + SES).
 
+This project was built because previously students had to go to the library to get past question papers. QVault was Created to streamline this process by having all their student question papers available at all times and anywhere. Students can view recently visited papers so that they can pick up their exam prep exactly where the left it off, or else favourite the papers for later reference.
+
 ---
 
 ## Tech Stack
@@ -187,5 +189,7 @@ HTML templates live under `emailtemplates/` and use `{{placeholder}}` syntax for
 ### Admin-Request
 <img src="images/Admin-Request.png" alt="Admin-Request page" width="750">
 
+### SuperAdmin-Dashboard
+<img src="images/SuperAdmin-Dashboard.png" alt="SuperAdmin-Dashboard page" width="750">
 
 
