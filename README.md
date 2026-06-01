@@ -151,6 +151,29 @@ HTML templates live under `emailtemplates/` and use `{{placeholder}}` syntax for
 - CORS is open (`*`) — restrict to your frontend origin in production.
 - `SampleService.java` duplicates much of the logic now split across `Authentication`, `CRUD`, `StudentHome`, `SearchAndGetPDF`, and `AdminHome`. New features should go into the dedicated service classes.
 
+---
+
 # Screenshots
+### Sign In
+<img src="images/Sign-In.jpg" alt="Sign in page" width="750">
 
+### Sign Up
+<img src="images/Sign-Up.jpg" alt="Sign Up page" width="750">
 
+### Forgot Password
+<img src="images/Forgot-Password.jpg" alt="Forgot Password page" width="750">
+
+### Student-Homepage
+<img src="images/Student-Homepage.png" alt="Student-Homepage page" width="750">
+
+### Student-Request
+<img src="images/Student-Request.png" alt="Student-Request page" width="650">
+
+### Email Template for Paper Request
+<img src="images/Email-request.jpg" alt="Email Template for Paper Request page" width="375">
+
+### Email Template for Password OTP
+<img src="images/Email-password.jpg" alt="Email Template for Password OTP page" width="375">
+
+### Student-Homepage
+<img src="images/Student-Homepage.png" alt="Student-Homepage page" width="750">
