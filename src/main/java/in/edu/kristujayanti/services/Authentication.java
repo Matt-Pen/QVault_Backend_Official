@@ -118,12 +118,11 @@ public class Authentication extends AbstractVerticle {
 
         Bson filt1 = Filters.eq("email", email);
         Document matchdoc = usersdb.find(filt1).first();
-        userstatus=matchdoc.getString("status");
         if (matchdoc == null) {
             status = "invalid username";
         } else {
             String dbpass = matchdoc.getString("pass");
-
+            userstatus=matchdoc.getString("status");
             if (verifyPassword(pass, dbpass)) {
                 if(userstatus== null || userstatus.equals("Active")) {
                     status = "Login success";
