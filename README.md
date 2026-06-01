@@ -175,5 +175,17 @@ HTML templates live under `emailtemplates/` and use `{{placeholder}}` syntax for
 ### Email Template for Password OTP
 <img src="images/Email-password.jpg" alt="Email Template for Password OTP page" width="375">
 
-### Student-Homepage
-<img src="images/Student-Homepage.png" alt="Student-Homepage page" width="750">
+### Student-favs
+<img src="images/Student-favs.png" alt="Student-favs page" width="750">
+
+### Add-QP
+<img src="images/Add-QP.png" alt="Add-QP page" width="750">
+
+### Admin-Dashboard
+<img src="images/\Admin-Dashboard.png" alt="Admin-Dashboard page" width="750">
+
+### Admin-Request
+<img src="images/Admin-Request.png" alt="Admin-Request page" width="750">
+
+
+
